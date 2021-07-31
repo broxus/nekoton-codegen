@@ -1,0 +1,18 @@
+[package]
+name = "nekoton-codegen"
+version = "0.1.0"
+authors = ["Vladimir Petrzhikovskiy <v.petrzhikovskiy@dexpa.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+codegen = "0.1.3"
+clap = "3.0.0-beta.2"
+serde = "1.0.126"
+serde_json = "1.0.65"
+ton_abi = { git = "https://github.com/tonlabs/ton-labs-abi", rev = 'a2b2a9dc2e8c30a070e9af79cf0c24a55bdd5a87' }
+anyhow = "1.0.42"
+nekoton-utils = { git="https://github.com/broxus/nekoton.git" }
+itertools = "0.10.1"
+case = "1.0.0"

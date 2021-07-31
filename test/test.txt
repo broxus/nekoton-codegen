@@ -1,0 +1,250 @@
+pub mod functions {
+    use serde::{Serialize, Deserialize};
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder};
+    use nekoton_utils::serde_helpers;
+    use ton_abi::{Param, ParamType};
+
+    #[derive(Copy, Clone, Debug)]
+    pub struct SafeMultisigWalletAbi;
+
+    impl SafeMultisigWalletAbi {
+        pub fn accept_transfer() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("acceptTransfer");
+                let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes},];
+                builder = builder.inputs(input);
+                builder
+            }
+        }
+
+        pub fn confirm_transaction() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("confirmTransaction");
+                let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)},];
+                builder = builder.inputs(input);
+                builder
+            }
+        }
+
+        pub fn constructor() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("constructor");
+                let input = vec![Param{name: "owners".to_string(), kind: ParamType::Array(Uint(256))},Param{name: "reqConfirms".to_string(), kind: ParamType::Uint(8)},];
+                builder = builder.inputs(input);
+                builder
+            }
+        }
+
+        pub fn get_custodians() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("getCustodians");
+                let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Tuple([Param { name: "index", kind: Uint(8) }, Param { name: "pubkey", kind: Uint(256) }]))},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn get_parameters() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("getParameters");
+                let output = vec![Param{name: "maxQueuedTransactions".to_string(), kind: ParamType::Uint(8)},Param{name: "maxCustodianCount".to_string(), kind: ParamType::Uint(8)},Param{name: "expirationTime".to_string(), kind: ParamType::Uint(64)},Param{name: "minValue".to_string(), kind: ParamType::Uint(128)},Param{name: "requiredTxnConfirms".to_string(), kind: ParamType::Uint(8)},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn get_transaction() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("getTransaction");
+                let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)},];
+                builder = builder.inputs(input);
+                let output = vec![Param{name: "trans".to_string(), kind: ParamType::Tuple([Param { name: "id", kind: Uint(64) }, Param { name: "confirmationsMask", kind: Uint(32) }, Param { name: "signsRequired", kind: Uint(8) }, Param { name: "signsReceived", kind: Uint(8) }, Param { name: "creator", kind: Uint(256) }, Param { name: "index", kind: Uint(8) }, Param { name: "dest", kind: Address }, Param { name: "value", kind: Uint(128) }, Param { name: "sendFlags", kind: Uint(16) }, Param { name: "payload", kind: Cell }, Param { name: "bounce", kind: Bool }])},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn get_transaction_ids() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("getTransactionIds");
+                let output = vec![Param{name: "ids".to_string(), kind: ParamType::Array(Uint(64))},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn get_transactions() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("getTransactions");
+                let output = vec![Param{name: "transactions".to_string(), kind: ParamType::Array(Tuple([Param { name: "id", kind: Uint(64) }, Param { name: "confirmationsMask", kind: Uint(32) }, Param { name: "signsRequired", kind: Uint(8) }, Param { name: "signsReceived", kind: Uint(8) }, Param { name: "creator", kind: Uint(256) }, Param { name: "index", kind: Uint(8) }, Param { name: "dest", kind: Address }, Param { name: "value", kind: Uint(128) }, Param { name: "sendFlags", kind: Uint(16) }, Param { name: "payload", kind: Cell }, Param { name: "bounce", kind: Bool }]))},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn is_confirmed() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("isConfirmed");
+                let input = vec![Param{name: "mask".to_string(), kind: ParamType::Uint(32)},Param{name: "index".to_string(), kind: ParamType::Uint(8)},];
+                builder = builder.inputs(input);
+                let output = vec![Param{name: "confirmed".to_string(), kind: ParamType::Bool},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+
+        pub fn send_transaction() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("sendTransaction");
+                let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "flags".to_string(), kind: ParamType::Uint(8)},Param{name: "payload".to_string(), kind: ParamType::Cell},];
+                builder = builder.inputs(input);
+                builder
+            }
+        }
+
+        pub fn submit_transaction() -> FunctionBuilder {
+            {
+                let mut builder = FunctionBuilder::new("submitTransaction");
+                let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "allBalance".to_string(), kind: ParamType::Bool},Param{name: "payload".to_string(), kind: ParamType::Cell},];
+                builder = builder.inputs(input);
+                let output = vec![Param{name: "transId".to_string(), kind: ParamType::Uint(64)},];
+                builder = builder.outputs(output);
+                builder
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct TupleStruct0 {
+        pub index: u8,
+        pub pubkey: ton_types::UInt256,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct TupleStruct1 {
+        pub id: u64,
+        #[abi(name = "confirmationsMask")]
+        pub confirmations_mask: u32,
+        #[abi(name = "signsRequired")]
+        pub signs_required: u8,
+        #[abi(name = "signsReceived")]
+        pub signs_received: u8,
+        pub creator: ton_types::UInt256,
+        pub index: u8,
+        pub dest: ton_block::MsgAddressInt,
+        pub value: num_biguint::BigUint,
+        #[abi(name = "sendFlags")]
+        pub send_flags: u16,
+        #[serde(with = "serde_helpers::serde_cell")]
+        pub payload: ton_types::Cell,
+        pub bounce: bool,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct AcceptTransferInput {
+        pub payload: Vec<u8>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct ConfirmTransactionInput {
+        #[abi(name = "transactionId")]
+        pub transaction_id: u64,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct ConstructorInput {
+        pub owners: ton_types::UInt256,
+        #[abi(name = "reqConfirms")]
+        pub req_confirms: u8,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetCustodiansOutput {
+        pub custodians: TupleStruct0,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetParametersOutput {
+        #[abi(name = "maxQueuedTransactions")]
+        pub max_queued_transactions: u8,
+        #[abi(name = "maxCustodianCount")]
+        pub max_custodian_count: u8,
+        #[abi(name = "expirationTime")]
+        pub expiration_time: u64,
+        #[abi(name = "minValue")]
+        pub min_value: num_biguint::BigUint,
+        #[abi(name = "requiredTxnConfirms")]
+        pub required_txn_confirms: u8,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetTransactionInput {
+        #[abi(name = "transactionId")]
+        pub transaction_id: u64,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetTransactionOutput {
+        pub trans: TupleStruct1,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetTransactionIdsOutput {
+        pub ids: u64,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct GetTransactionsOutput {
+        pub transactions: TupleStruct1,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct IsConfirmedInput {
+        pub mask: u32,
+        pub index: u8,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct IsConfirmedOutput {
+        pub confirmed: bool,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct SendTransactionInput {
+        pub dest: ton_block::MsgAddressInt,
+        pub value: num_biguint::BigUint,
+        pub bounce: bool,
+        pub flags: u8,
+        #[serde(with = "serde_helpers::serde_cell")]
+        pub payload: ton_types::Cell,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct SubmitTransactionInput {
+        pub dest: ton_block::MsgAddressInt,
+        pub value: num_biguint::BigUint,
+        pub bounce: bool,
+        #[abi(name = "allBalance")]
+        pub all_balance: bool,
+        #[serde(with = "serde_helpers::serde_cell")]
+        pub payload: ton_types::Cell,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct SubmitTransactionOutput {
+        #[abi(name = "transId")]
+        pub trans_id: u64,
+    }
+}
+
+pub mod events {
+    use serde::{Serialize, Deserialize};
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder};
+    use nekoton_utils::serde_helpers;
+    use ton_abi::{Param, ParamType};
+
+    #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
+    pub struct TransferAcceptedInput {
+        pub payload: Vec<u8>,
+    }
+}
