@@ -504,7 +504,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#d64d32b4b4e8522ffc8f96257451597e6fe5cf5c"
+source = "git+https://github.com/broxus/nekoton.git#e474b00508d32ca25c46a31b12500504b3f4825a"
 dependencies = [
  "anyhow",
  "base64 0.13.0",

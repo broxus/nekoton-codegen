@@ -1,12 +1,9 @@
 #![allow(clippy::vec_box)]
 
-mod reserved_words;
-
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use crate::reserved_words::process_field;
 use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
@@ -15,6 +12,10 @@ use itertools::Itertools;
 use nekoton_utils::NoFailure;
 use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
+
+use crate::reserved_words::process_field;
+
+mod reserved_words;
 
 #[derive(Clap)]
 struct Args {
@@ -70,7 +71,7 @@ fn generate_contract_binding(fh: &mut dyn std::io::Read, contract_name: &str) ->
     }
     let events = data.events();
     if !events.is_empty() {
-        let events = events_gen(BTreeMap::from_iter(events.clone()))?;
+        let events = events_gen(BTreeMap::from_iter(events.clone()), contract_name)?;
         *scope.new_module("events") = events;
     }
     Ok(scope.to_string())
@@ -83,7 +84,6 @@ fn module_imports(mut module: Module) -> Module {
         .import("serde", "Deserialize")
         .import("nekoton_abi", "UnpackAbi")
         .import("nekoton_abi", "PackAbi")
-        .import("nekoton_abi", "FunctionBuilder")
         .import("nekoton_abi", "UnpackToken")
         .import("nekoton_abi", "UnpackerError")
         .import("nekoton_abi", "UnpackerResult")
@@ -94,18 +94,25 @@ fn module_imports(mut module: Module) -> Module {
         .clone()
 }
 
-fn events_gen(input: BTreeMap<String, Event>) -> Result<Module> {
+fn events_gen(input: BTreeMap<String, Event>, contract_name: &str) -> Result<Module> {
     let mut md = Module::new("events");
     let mut struct_id = 0;
     let mut structs = vec![];
-    for (name, fun) in input {
-        for strct in gen_struct(&fun.inputs, name.clone() + "Input", &mut struct_id)? {
+    let mut events = vec![];
+    for (name, event) in input {
+        if event.inputs.is_empty() {
+            continue;
+        }
+        for strct in gen_struct(&event.inputs, name.clone() + "Input", &mut struct_id)? {
             structs.push(strct);
         }
+        events.push(event_impl(event));
     }
+    struct_impl(contract_name, events, &mut md);
     dedup(&mut md, &mut structs);
-
-    Ok(module_imports(md))
+    Ok(module_imports(md)
+        .import("nekoton_abi", "EventBuilder")
+        .clone())
 }
 
 fn params_to_string(params: Vec<Param>) -> String {
@@ -201,6 +208,31 @@ fn function_impl(function: Function) -> codegen::Function {
     fun
 }
 
+fn event_impl(event: Event) -> codegen::Function {
+    let mut block = codegen::Block::new("");
+
+    if !(event.inputs.is_empty()) {
+        block = block
+            .line(format!(
+                "let mut builder = EventBuilder::new(\"{}\");",
+                event.name
+            ))
+            .clone();
+        let mut res = "let input = ".to_string();
+        res += &params_to_string(event.inputs);
+        block = block.line(res).clone();
+        block = block.line("builder = builder.inputs(input);").clone();
+    }
+
+    block = block.line("builder").clone();
+    let fun = codegen::Function::new(&event.name.to_snake())
+        .vis("pub")
+        .ret("EventBuilder")
+        .push_block(block)
+        .clone();
+    fun
+}
+
 fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Result<Module> {
     let mut md = Module::new("functions");
     let mut struct_id = 0;
@@ -221,7 +253,9 @@ fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Resu
     struct_impl(contract_name, funs, &mut md);
     dedup(&mut md, &mut structs);
 
-    Ok(module_imports(md))
+    Ok(module_imports(md)
+        .import("nekoton_abi", "FunctionBuilder")
+        .clone())
 }
 
 fn struct_impl(struct_name: &str, impls: Vec<codegen::Function>, md: &mut Module) {

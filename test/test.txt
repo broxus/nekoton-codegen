@@ -1,6 +1,6 @@
 pub mod functions {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt};
+    use nekoton_abi::{UnpackAbi, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, FunctionBuilder};
     use ton_abi::{Param, ParamType};
 
     #[derive(Copy, Clone, Debug)]
@@ -241,8 +241,22 @@ pub mod functions {
 
 pub mod events {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt};
+    use nekoton_abi::{UnpackAbi, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, EventBuilder};
     use ton_abi::{Param, ParamType};
+
+    #[derive(Copy, Clone, Debug)]
+    pub struct SafeMultisigWalletAbi;
+
+    impl SafeMultisigWalletAbi {
+        pub fn transfer_accepted() -> EventBuilder {
+            {
+                let mut builder = EventBuilder::new("TransferAccepted");
+                let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes}];
+                builder = builder.inputs(input);
+                builder
+            }
+        }
+    }
 
     #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
     pub struct TransferAcceptedInput {
