@@ -88,7 +88,7 @@ fn module_imports(mut module: Module) -> Module {
         .import("nekoton_abi", "UnpackerError")
         .import("nekoton_abi", "UnpackerResult")
         .import("nekoton_abi", "BuildTokenValue")
-        .import("nekoton_utils", "serde_helpers")
+        .import("nekoton_abi", "TokenValueExt")
         .import("ton_abi", "Param")
         .import("ton_abi", "ParamType")
         .clone()
@@ -207,6 +207,9 @@ fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Resu
     let mut structs = vec![];
     let mut funs = vec![];
     for (name, fun) in input {
+        if fun.inputs.is_empty() && fun.outputs.is_empty() {
+            continue;
+        }
         funs.push(function_impl(fun.clone()));
         for strct in gen_struct(&fun.inputs, name.clone() + "Input", &mut struct_id)? {
             structs.push(strct);
@@ -301,7 +304,12 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         };
         if &ty == "ton_types::Cell" {
             field = field
-                .annotation(vec!["#[serde(with = \"serde_helpers::serde_cell\")]"])
+                .annotation(vec!["#[serde(with = \"nekoton_utils::serde_cell\")]"])
+                .clone();
+        }
+        if &ty == "ton_block::MsgAddressInt" {
+            field = field
+                .annotation(vec!["#[serde(with = \"nekoton_utils::serde_address\")]"])
                 .clone();
         }
         str = str.push_field(field).clone();

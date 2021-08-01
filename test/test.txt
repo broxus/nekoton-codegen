@@ -1,7 +1,6 @@
 pub mod functions {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue};
-    use nekoton_utils::serde_helpers;
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt};
     use ton_abi::{Param, ParamType};
 
     #[derive(Copy, Clone, Debug)]
@@ -131,11 +130,12 @@ pub mod functions {
         pub signs_received: u8,
         pub creator: ton_types::UInt256,
         pub index: u8,
+        #[serde(with = "nekoton_utils::serde_address")]
         pub dest: ton_block::MsgAddressInt,
         pub value: num_bigint::BigUint,
         #[abi(name = "sendFlags")]
         pub send_flags: u16,
-        #[serde(with = "serde_helpers::serde_cell")]
+        #[serde(with = "nekoton_utils::serde_cell")]
         pub payload: ton_types::Cell,
         pub bounce: bool,
     }
@@ -211,22 +211,24 @@ pub mod functions {
 
     #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
     pub struct SendTransactionInput {
+        #[serde(with = "nekoton_utils::serde_address")]
         pub dest: ton_block::MsgAddressInt,
         pub value: num_bigint::BigUint,
         pub bounce: bool,
         pub flags: u8,
-        #[serde(with = "serde_helpers::serde_cell")]
+        #[serde(with = "nekoton_utils::serde_cell")]
         pub payload: ton_types::Cell,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
     pub struct SubmitTransactionInput {
+        #[serde(with = "nekoton_utils::serde_address")]
         pub dest: ton_block::MsgAddressInt,
         pub value: num_bigint::BigUint,
         pub bounce: bool,
         #[abi(name = "allBalance")]
         pub all_balance: bool,
-        #[serde(with = "serde_helpers::serde_cell")]
+        #[serde(with = "nekoton_utils::serde_cell")]
         pub payload: ton_types::Cell,
     }
 
@@ -239,8 +241,7 @@ pub mod functions {
 
 pub mod events {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue};
-    use nekoton_utils::serde_helpers;
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt};
     use ton_abi::{Param, ParamType};
 
     #[derive(Serialize, Deserialize, Debug, Clone, UnpackAbi, PackAbi)]
