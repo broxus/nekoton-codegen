@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
+use crate::reserved_words::process_field;
 use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
@@ -12,8 +13,6 @@ use itertools::Itertools;
 use nekoton_utils::NoFailure;
 use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
-
-use crate::reserved_words::process_field;
 
 mod reserved_words;
 
@@ -91,6 +90,7 @@ fn module_imports(mut module: Module) -> Module {
         .import("nekoton_abi", "TokenValueExt")
         .import("ton_abi", "Param")
         .import("ton_abi", "ParamType")
+        .import("std::collections", "HashMap")
         .clone()
 }
 
@@ -491,8 +491,20 @@ fn map_ton_types(ty: ParamType, field_name: String) -> Result<MappedType> {
         ParamType::Array(a) => return map_ton_types(*a, field_name),
         ParamType::FixedArray(a, _) => return map_ton_types(*a, field_name),
         ParamType::Cell => "ton_types::Cell".to_string(),
-        ParamType::Map(_, _) => {
-            todo!()
+        ParamType::Map(a, b) => {
+            let a = match map_ton_types(*a, field_name.clone()).unwrap() {
+                MappedType::Ty { ty, .. } => (ty),
+                MappedType::Tuple { .. } => {
+                    todo!()
+                }
+            };
+            let b = match map_ton_types(*b, field_name.clone()).unwrap() {
+                MappedType::Ty { ty, .. } => (ty),
+                MappedType::Tuple { .. } => {
+                    todo!()
+                }
+            };
+            format!("HashMap<{},{}>", a, b)
         }
         ParamType::Address => "ton_block::MsgAddressInt".to_string(),
         ParamType::Bytes => "Vec<u8>".to_string(),

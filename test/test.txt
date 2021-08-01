@@ -2,6 +2,7 @@ pub mod functions {
     use serde::{Serialize, Deserialize};
     use nekoton_abi::{UnpackAbi, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, FunctionBuilder};
     use ton_abi::{Param, ParamType};
+    use std::collections::HashMap;
 
     #[derive(Copy, Clone, Debug)]
     pub struct SafeMultisigWalletAbi;
@@ -243,6 +244,7 @@ pub mod events {
     use serde::{Serialize, Deserialize};
     use nekoton_abi::{UnpackAbi, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, EventBuilder};
     use ton_abi::{Param, ParamType};
+    use std::collections::HashMap;
 
     #[derive(Copy, Clone, Debug)]
     pub struct SafeMultisigWalletAbi;
