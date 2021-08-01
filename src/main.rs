@@ -100,19 +100,67 @@ fn events_gen(input: BTreeMap<String, Event>) -> Result<Module> {
     Ok(module_imports(md))
 }
 
-fn function_impl(function: Function) -> codegen::Function {
-    fn params_to_string(params: Vec<Param>) -> String {
-        let mut res = "vec![".to_string();
-        for input in params {
-            let name = input.name;
-            let kind = format!("ParamType::{:?}", input.kind);
-            let str = format!("Param{{name: \"{}\".to_string(), kind: {}}},", name, kind);
-            res.push_str(&str);
-        }
-        res.push_str("];");
-        res
+fn params_to_string(params: Vec<Param>) -> String {
+    fn param_to_string(param: ParamType, name: &str) -> Vec<String> {
+        let res = match param.clone() {
+            ParamType::Tuple(a) => {
+                return a
+                    .into_iter()
+                    .map(|x| param_to_string(x.kind, &x.name))
+                    .flatten()
+                    .collect()
+            }
+            ParamType::Array(a) => {
+                let ty = param_to_string(*a, "");
+                format!(
+                    "Param{{name: \"{}\".to_string(), kind: ParamType::Array(Box::new({}))}}",
+                    name,
+                    ty.first().unwrap()
+                )
+            }
+            ParamType::FixedArray(a, _) => {
+                let ty = param_to_string(*a, "");
+                format!(
+                    "Param{{name: \"{}\".to_string(), kind: ParamType::FixedArray(Box::new({}))}}",
+                    name,
+                    ty.first().unwrap()
+                )
+            }
+            ParamType::Map(a, b) => {
+                let a = param_to_string(*a, "");
+                let b = param_to_string(*b, "");
+                format!(
+                    "Param{{name: \"{}\".to_string(), kind: ParamType::Map((Box::new({}), Box::new({})))}}",
+                    name,
+                    a.first().unwrap(),
+                    b.first().unwrap()
+                )
+            }
+            _ => {
+                if name.is_empty() {
+                    format!("ParamType::{:?}", param)
+                } else {
+                    format!(
+                        "Param{{name: \"{}\".to_string(), kind: ParamType::{:?}}}",
+                        name, param
+                    )
+                }
+            }
+        };
+        vec![res]
     }
+    let mut res = "vec![".to_string();
+    let joined = params
+        .into_iter()
+        .map(|x| param_to_string(x.kind, &x.name))
+        .flatten()
+        .join(",");
+    res += &joined;
+    res += "];";
+    res
+}
 
+fn function_impl(function: Function) -> codegen::Function {
     let mut block = codegen::Block::new("");
 
     if !(function.inputs.is_empty() && function.outputs.is_empty()) {
@@ -362,10 +410,10 @@ fn map_ton_types(ty: ParamType, field_name: String) -> Result<MappedType> {
             16 => "u16",
             32 => "u32",
             64 => "u64",
-            128 => "num_biguint::BigUint",
-            160 => "num_biguint::BigUint",
+            128 => "num_bigint::BigUint",
+            160 => "num_bigint::BigUint",
             256 => "ton_types::UInt256",
-            _ => "num_biguint::BigUint",
+            _ => "num_bigint::BigUint",
         }
         .to_string(),
         ParamType::Int(a) => match a {
