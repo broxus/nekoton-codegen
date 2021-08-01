@@ -1,15 +1,19 @@
 #![allow(clippy::vec_box)]
 
+mod reserved_words;
+
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
+use crate::reserved_words::process_field;
 use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
 use codegen::{Field, Module, Struct};
 use itertools::Itertools;
 use nekoton_utils::NoFailure;
+use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
 
 #[derive(Clap)]
@@ -80,6 +84,10 @@ fn module_imports(mut module: Module) -> Module {
         .import("nekoton_abi", "UnpackAbi")
         .import("nekoton_abi", "PackAbi")
         .import("nekoton_abi", "FunctionBuilder")
+        .import("nekoton_abi", "UnpackToken")
+        .import("nekoton_abi", "UnpackerError")
+        .import("nekoton_abi", "UnpackerResult")
+        .import("nekoton_abi", "BuildTokenValue")
         .import("nekoton_utils", "serde_helpers")
         .import("ton_abi", "Param")
         .import("ton_abi", "ParamType")
@@ -281,6 +289,7 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         let field_name = name
             .strip_prefix("_")
             .unwrap_or_else(|| name.as_str())
+            .pipe(|x| process_field(x.to_string()))
             .to_snake();
         let field = "pub ".to_string() + &field_name;
         let mut field = if field_name != name {

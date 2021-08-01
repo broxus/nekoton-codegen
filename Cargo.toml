@@ -16,3 +16,4 @@ anyhow = "1.0.42"
 nekoton-utils = { git="https://github.com/broxus/nekoton.git" }
 itertools = "0.10.1"
 case = "1.0.0"
+tap = "1.0.1"

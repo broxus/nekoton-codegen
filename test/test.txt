@@ -1,6 +1,6 @@
 pub mod functions {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder};
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue};
     use nekoton_utils::serde_helpers;
     use ton_abi::{Param, ParamType};
 
@@ -239,7 +239,7 @@ pub mod functions {
 
 pub mod events {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder};
+    use nekoton_abi::{UnpackAbi, PackAbi, FunctionBuilder, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue};
     use nekoton_utils::serde_helpers;
     use ton_abi::{Param, ParamType};
 
