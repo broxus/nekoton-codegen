@@ -145,7 +145,7 @@ fn params_to_string(params: Vec<Param>) -> String {
                 let a = param_to_string(*a, "");
                 let b = param_to_string(*b, "");
                 format!(
-                    "Param{{name: \"{}\".to_string(), kind: ParamType::Map((Box::new({}), Box::new({})))}}",
+                    "Param{{name: \"{}\".to_string(), kind: ParamType::Map(Box::new({}), Box::new({}))}}",
                     name,
                     a.first().unwrap(),
                     b.first().unwrap()
