@@ -82,6 +82,7 @@ fn module_imports(mut module: Module) -> Module {
         .import("serde", "Serialize")
         .import("serde", "Deserialize")
         .import("nekoton_abi", "UnpackAbi")
+        .import("nekoton_abi", "UnpackAbiPlain")
         .import("nekoton_abi", "PackAbi")
         .import("nekoton_abi", "UnpackToken")
         .import("nekoton_abi", "UnpackerError")
@@ -91,6 +92,7 @@ fn module_imports(mut module: Module) -> Module {
         .import("ton_abi", "Param")
         .import("ton_abi", "ParamType")
         .import("std::collections", "HashMap")
+        .import("once_cell::sync", "OnceCell")
         .clone()
 }
 
@@ -176,10 +178,15 @@ fn params_to_string(params: Vec<Param>) -> String {
 }
 
 fn function_impl(function: Function) -> codegen::Function {
-    let mut block = codegen::Block::new("");
+    let mut fun = codegen::Function::new(&function.name.to_snake())
+        .vis("pub")
+        .ret("ton_abi::Event")
+        .line("static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();")
+        .line("FUNCTION.get_or_init(||")
+        .clone();
 
     if !(function.inputs.is_empty() && function.outputs.is_empty()) {
-        block = block
+        fun = fun
             .line(format!(
                 "let mut builder = FunctionBuilder::new(\"{}\");",
                 function.name
@@ -189,30 +196,29 @@ fn function_impl(function: Function) -> codegen::Function {
     if !function.inputs.is_empty() {
         let mut res = "let input = ".to_string();
         res += &params_to_string(function.inputs);
-        block = block.line(res).clone();
-        block = block.line("builder = builder.inputs(input);").clone();
+        fun = fun.line(res).clone();
+        fun = fun.line("builder = builder.inputs(input);").clone();
     }
 
     if !function.outputs.is_empty() {
         let mut res = "let output = ".to_string();
         res += &params_to_string(function.outputs);
-        block = block.line(res).clone();
-        block = block.line("builder = builder.outputs(output);").clone();
+        fun = fun.line(res).clone();
+        fun = fun.line("builder = builder.outputs(output);").clone();
     }
-    block = block.line("builder").clone();
-    let fun = codegen::Function::new(&function.name.to_snake())
-        .vis("pub")
-        .ret("FunctionBuilder")
-        .push_block(block)
-        .clone();
-    fun
+    fun.line("builder.build()").line("})").clone()
 }
 
 fn event_impl(event: Event) -> codegen::Function {
-    let mut block = codegen::Block::new("");
+    let mut fun = codegen::Function::new(&event.name.to_snake())
+        .vis("pub")
+        .ret("ton_abi::Event")
+        .line("static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();")
+        .line("EVENT.get_or_init(||")
+        .clone();
 
     if !(event.inputs.is_empty()) {
-        block = block
+        fun = fun
             .line(format!(
                 "let mut builder = EventBuilder::new(\"{}\");",
                 event.name
@@ -220,17 +226,10 @@ fn event_impl(event: Event) -> codegen::Function {
             .clone();
         let mut res = "let input = ".to_string();
         res += &params_to_string(event.inputs);
-        block = block.line(res).clone();
-        block = block.line("builder = builder.inputs(input);").clone();
+        fun = fun.line(res).clone();
+        fun = fun.line("builder = builder.inputs(input);").clone();
     }
-
-    block = block.line("builder").clone();
-    let fun = codegen::Function::new(&event.name.to_snake())
-        .vis("pub")
-        .ret("EventBuilder")
-        .push_block(block)
-        .clone();
-    fun
+    fun.line("builder.build()").line("})").clone()
 }
 
 fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Result<Module> {
@@ -353,11 +352,14 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         .derive("Deserialize")
         .derive("Debug")
         .derive("Clone")
-        .derive("UnpackAbi")
         .derive("PackAbi")
         .vis("pub")
         .clone();
-    str
+    if name.contains("Output") {
+        str.derive("UnpackAbiPlain").clone()
+    } else {
+        str.derive("UnpackAbi").clone()
+    }
 }
 
 #[derive(Debug)]
