@@ -180,9 +180,9 @@ fn params_to_string(params: Vec<Param>) -> String {
 fn function_impl(function: Function) -> codegen::Function {
     let mut fun = codegen::Function::new(&function.name.to_snake())
         .vis("pub")
-        .ret("ton_abi::Event")
+        .ret("ton_abi::Function")
         .line("static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();")
-        .line("FUNCTION.get_or_init(||")
+        .line("FUNCTION.get_or_init(|| ({")
         .clone();
 
     if !(function.inputs.is_empty() && function.outputs.is_empty()) {
@@ -214,7 +214,7 @@ fn event_impl(event: Event) -> codegen::Function {
         .vis("pub")
         .ret("ton_abi::Event")
         .line("static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();")
-        .line("EVENT.get_or_init(||")
+        .line("EVENT.get_or_init(|| ({")
         .clone();
 
     if !(event.inputs.is_empty()) {
