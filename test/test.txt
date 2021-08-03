@@ -43,7 +43,7 @@ pub mod functions {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
             FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getCustodians");
-            let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Box::new(Param{name: "index".to_string(), kind: ParamType::Uint(8)}))}];
+            let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Box::new(ParamType::Tuple(vec![Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "pubkey".to_string(), kind: ParamType::Uint(256)}])))}];
             builder = builder.outputs(output);
             builder.build()
             })
@@ -65,7 +65,7 @@ pub mod functions {
             let mut builder = FunctionBuilder::new("getTransaction");
             let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)}];
             builder = builder.inputs(input);
-            let output = vec![Param{name: "id".to_string(), kind: ParamType::Uint(64)},Param{name: "confirmationsMask".to_string(), kind: ParamType::Uint(32)},Param{name: "signsRequired".to_string(), kind: ParamType::Uint(8)},Param{name: "signsReceived".to_string(), kind: ParamType::Uint(8)},Param{name: "creator".to_string(), kind: ParamType::Uint(256)},Param{name: "index".to_string(), kind: ParamType::Uint(8)},Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "sendFlags".to_string(), kind: ParamType::Uint(16)},Param{name: "payload".to_string(), kind: ParamType::Cell},Param{name: "bounce".to_string(), kind: ParamType::Bool}];
+            let output = vec![Param{name: "trans".to_string(), kind: ParamType::Tuple(vec![Param{name: "id".to_string(), kind: ParamType::Uint(64)}, Param{name: "confirmationsMask".to_string(), kind: ParamType::Uint(32)}, Param{name: "signsRequired".to_string(), kind: ParamType::Uint(8)}, Param{name: "signsReceived".to_string(), kind: ParamType::Uint(8)}, Param{name: "creator".to_string(), kind: ParamType::Uint(256)}, Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "dest".to_string(), kind: ParamType::Address}, Param{name: "value".to_string(), kind: ParamType::Uint(128)}, Param{name: "sendFlags".to_string(), kind: ParamType::Uint(16)}, Param{name: "payload".to_string(), kind: ParamType::Cell}, Param{name: "bounce".to_string(), kind: ParamType::Bool}])}];
             builder = builder.outputs(output);
             builder.build()
             })
@@ -85,7 +85,7 @@ pub mod functions {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
             FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getTransactions");
-            let output = vec![Param{name: "transactions".to_string(), kind: ParamType::Array(Box::new(Param{name: "id".to_string(), kind: ParamType::Uint(64)}))}];
+            let output = vec![Param{name: "transactions".to_string(), kind: ParamType::Array(Box::new(ParamType::Tuple(vec![Param{name: "id".to_string(), kind: ParamType::Uint(64)}, Param{name: "confirmationsMask".to_string(), kind: ParamType::Uint(32)}, Param{name: "signsRequired".to_string(), kind: ParamType::Uint(8)}, Param{name: "signsReceived".to_string(), kind: ParamType::Uint(8)}, Param{name: "creator".to_string(), kind: ParamType::Uint(256)}, Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "dest".to_string(), kind: ParamType::Address}, Param{name: "value".to_string(), kind: ParamType::Uint(128)}, Param{name: "sendFlags".to_string(), kind: ParamType::Uint(16)}, Param{name: "payload".to_string(), kind: ParamType::Cell}, Param{name: "bounce".to_string(), kind: ParamType::Bool}])))}];
             builder = builder.outputs(output);
             builder.build()
             })

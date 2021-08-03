@@ -119,59 +119,47 @@ fn events_gen(input: BTreeMap<String, Event>, contract_name: &str) -> Result<Mod
 }
 
 fn params_to_string(params: Vec<Param>) -> String {
-    fn param_to_string(param: ParamType, name: &str) -> Vec<String> {
-        let res = match param.clone() {
+    fn param_type_to_string(param: ParamType) -> String {
+        match param.clone() {
             ParamType::Tuple(a) => {
-                return a
+                let components = a
                     .into_iter()
                     .map(|x| param_to_string(x.kind, &x.name))
-                    .flatten()
-                    .collect()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("ParamType::Tuple(vec![{}])", components)
             }
             ParamType::Array(a) => {
-                let ty = param_to_string(*a, "");
-                format!(
-                    "Param{{name: \"{}\".to_string(), kind: ParamType::Array(Box::new({}))}}",
-                    name,
-                    ty.first().unwrap()
-                )
+                let ty = param_type_to_string(*a);
+                format!("ParamType::Array(Box::new({}))", ty)
             }
             ParamType::FixedArray(a, _) => {
-                let ty = param_to_string(*a, "");
-                format!(
-                    "Param{{name: \"{}\".to_string(), kind: ParamType::FixedArray(Box::new({}))}}",
-                    name,
-                    ty.first().unwrap()
-                )
+                let ty = param_type_to_string(*a);
+                format!("ParamType::FixedArray(Box::new({}))", ty)
             }
             ParamType::Map(a, b) => {
-                let a = param_to_string(*a, "");
-                let b = param_to_string(*b, "");
-                format!(
-                    "Param{{name: \"{}\".to_string(), kind: ParamType::Map(Box::new({}), Box::new({}))}}",
-                    name,
-                    a.first().unwrap(),
-                    b.first().unwrap()
-                )
+                let a = param_type_to_string(*a);
+                let b = param_type_to_string(*b);
+                format!("ParamType::Map(Box::new({}), Box::new({}))}}", a, b)
             }
             _ => {
-                if name.is_empty() {
-                    format!("ParamType::{:?}", param)
-                } else {
-                    format!(
-                        "Param{{name: \"{}\".to_string(), kind: ParamType::{:?}}}",
-                        name, param
-                    )
-                }
+                format!("ParamType::{:?}", param)
             }
-        };
-        vec![res]
+        }
     }
+
+    fn param_to_string(param: ParamType, name: &str) -> String {
+        let param_type = param_type_to_string(param);
+        format!(
+            "Param{{name: \"{}\".to_string(), kind: {}}}",
+            name, param_type
+        )
+    }
+
     let mut res = "vec![".to_string();
     let joined = params
         .into_iter()
         .map(|x| param_to_string(x.kind, &x.name))
-        .flatten()
         .join(",");
     res += &joined;
     res += "];";
