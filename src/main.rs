@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use crate::reserved_words::process_field;
 use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
@@ -13,6 +12,8 @@ use itertools::Itertools;
 use nekoton_utils::NoFailure;
 use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
+
+use crate::reserved_words::process_field;
 
 mod reserved_words;
 
@@ -270,6 +271,7 @@ fn struct_impl(struct_name: &str, impls: Vec<codegen::Function>, md: &mut Module
     *md = md.push_impl(struct_impl).clone();
 }
 
+/// Searching structs with the same args and merging them
 fn dedup(md: &mut Module, structs: &mut Vec<StructData>) {
     let mut known_types = BTreeMap::new();
 
