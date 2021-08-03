@@ -85,7 +85,6 @@ fn module_imports(mut module: Module) -> Module {
         .import("nekoton_abi", "UnpackAbi")
         .import("nekoton_abi", "UnpackAbiPlain")
         .import("nekoton_abi", "PackAbi")
-        .import("nekoton_abi", "UnpackToken")
         .import("nekoton_abi", "UnpackerError")
         .import("nekoton_abi", "UnpackerResult")
         .import("nekoton_abi", "BuildTokenValue")
@@ -310,33 +309,36 @@ fn dedup(md: &mut Module, structs: &mut Vec<StructData>) {
 
 fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
     let mut str = Struct::new(&name.to_camel());
+
     for (name, ty) in types {
-        let annotation = format!("#[abi(name = \"{}\")]", name);
         let field_name = name
             .strip_prefix("_")
             .unwrap_or_else(|| name.as_str())
             .pipe(process_field)
             .to_snake();
+
         let field = "pub ".to_string() + &field_name;
-        let mut field = if field_name != name {
-            Field::new(&field, &ty)
-                .annotation(vec![annotation.as_str()])
-                .clone()
+        let named_abi = format!("#[abi(name = \"{}\")]", name);
+
+        let mut annotations = Vec::new();
+
+        if field_name != name {
+            annotations.push(named_abi.as_str())
         } else {
-            Field::new(&field, &ty).clone()
+            annotations.push("#[abi]")
         };
+
         if &ty == "ton_types::Cell" {
-            field = field
-                .annotation(vec!["#[serde(with = \"nekoton_utils::serde_cell\")]"])
-                .clone();
+            annotations.push("#[serde(with = \"nekoton_utils::serde_cell\")]")
+        } else if &ty == "ton_block::MsgAddressInt" {
+            annotations.push("#[serde(with = \"nekoton_utils::serde_address\")]");
         }
-        if &ty == "ton_block::MsgAddressInt" {
-            field = field
-                .annotation(vec!["#[serde(with = \"nekoton_utils::serde_address\")]"])
-                .clone();
-        }
-        str = str.push_field(field).clone();
+
+        str = str
+            .push_field(Field::new(&field, &ty).annotation(annotations).clone())
+            .clone();
     }
+
     str = str
         .derive("Serialize")
         .derive("Deserialize")
@@ -345,6 +347,7 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         .derive("PackAbi")
         .vis("pub")
         .clone();
+
     if name.contains("Output") {
         str.derive("UnpackAbiPlain").clone()
     } else {

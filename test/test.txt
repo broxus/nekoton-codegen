@@ -1,6 +1,6 @@
 pub mod functions {
     use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, UnpackAbiPlain, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, FunctionBuilder};
+    use nekoton_abi::{UnpackAbi, UnpackAbiPlain, PackAbi, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, FunctionBuilder};
     use ton_abi::{Param, ParamType};
     use std::collections::HashMap;
     use once_cell::sync::OnceCell;
@@ -9,127 +9,31 @@ pub mod functions {
     pub struct SafeMultisigWalletAbi;
 
     impl SafeMultisigWalletAbi {
-        pub fn accept_transfer() -> &'static ton_abi::Function {
+        pub fn test1() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
             FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("acceptTransfer");
-            let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes}];
-            builder = builder.inputs(input);
-            builder.build()
-            })
-        }
-
-        pub fn confirm_transaction() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("confirmTransaction");
-            let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)}];
-            builder = builder.inputs(input);
-            builder.build()
-            })
-        }
-
-        pub fn constructor() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("constructor");
-            let input = vec![Param{name: "owners".to_string(), kind: ParamType::Array(Box::new(ParamType::Uint(256)))},Param{name: "reqConfirms".to_string(), kind: ParamType::Uint(8)}];
-            builder = builder.inputs(input);
-            builder.build()
-            })
-        }
-
-        pub fn get_custodians() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("getCustodians");
-            let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Box::new(ParamType::Tuple(vec![Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "pubkey".to_string(), kind: ParamType::Uint(256)}])))}];
+            let mut builder = FunctionBuilder::new("test1");
+            let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Box::new(ParamType::Tuple(vec![Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "pubkey".to_string(), kind: ParamType::Uint(256)}, Param{name: "test".to_string(), kind: ParamType::Tuple(vec![Param{name: "index1".to_string(), kind: ParamType::Uint(8)}, Param{name: "index2".to_string(), kind: ParamType::Uint(8)}])}])))}];
             builder = builder.outputs(output);
             builder.build()
             })
         }
 
-        pub fn get_parameters() -> &'static ton_abi::Function {
+        pub fn test2() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
             FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("getParameters");
-            let output = vec![Param{name: "maxQueuedTransactions".to_string(), kind: ParamType::Uint(8)},Param{name: "maxCustodianCount".to_string(), kind: ParamType::Uint(8)},Param{name: "expirationTime".to_string(), kind: ParamType::Uint(64)},Param{name: "minValue".to_string(), kind: ParamType::Uint(128)},Param{name: "requiredTxnConfirms".to_string(), kind: ParamType::Uint(8)}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn get_transaction() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("getTransaction");
-            let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)}];
-            builder = builder.inputs(input);
-            let output = vec![Param{name: "trans".to_string(), kind: ParamType::Tuple(vec![Param{name: "id".to_string(), kind: ParamType::Uint(64)}, Param{name: "confirmationsMask".to_string(), kind: ParamType::Uint(32)}, Param{name: "signsRequired".to_string(), kind: ParamType::Uint(8)}, Param{name: "signsReceived".to_string(), kind: ParamType::Uint(8)}, Param{name: "creator".to_string(), kind: ParamType::Uint(256)}, Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "dest".to_string(), kind: ParamType::Address}, Param{name: "value".to_string(), kind: ParamType::Uint(128)}, Param{name: "sendFlags".to_string(), kind: ParamType::Uint(16)}, Param{name: "payload".to_string(), kind: ParamType::Cell}, Param{name: "bounce".to_string(), kind: ParamType::Bool}])}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn get_transaction_ids() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("getTransactionIds");
-            let output = vec![Param{name: "ids".to_string(), kind: ParamType::Array(Box::new(ParamType::Uint(64)))}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn get_transactions() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("getTransactions");
-            let output = vec![Param{name: "transactions".to_string(), kind: ParamType::Array(Box::new(ParamType::Tuple(vec![Param{name: "id".to_string(), kind: ParamType::Uint(64)}, Param{name: "confirmationsMask".to_string(), kind: ParamType::Uint(32)}, Param{name: "signsRequired".to_string(), kind: ParamType::Uint(8)}, Param{name: "signsReceived".to_string(), kind: ParamType::Uint(8)}, Param{name: "creator".to_string(), kind: ParamType::Uint(256)}, Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "dest".to_string(), kind: ParamType::Address}, Param{name: "value".to_string(), kind: ParamType::Uint(128)}, Param{name: "sendFlags".to_string(), kind: ParamType::Uint(16)}, Param{name: "payload".to_string(), kind: ParamType::Cell}, Param{name: "bounce".to_string(), kind: ParamType::Bool}])))}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn is_confirmed() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("isConfirmed");
-            let input = vec![Param{name: "mask".to_string(), kind: ParamType::Uint(32)},Param{name: "index".to_string(), kind: ParamType::Uint(8)}];
-            builder = builder.inputs(input);
-            let output = vec![Param{name: "confirmed".to_string(), kind: ParamType::Bool}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn send_transaction() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("sendTransaction");
-            let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "flags".to_string(), kind: ParamType::Uint(8)},Param{name: "payload".to_string(), kind: ParamType::Cell}];
+            let mut builder = FunctionBuilder::new("test2");
+            let input = vec![Param{name: "custodians".to_string(), kind: ParamType::Tuple(vec![Param{name: "index".to_string(), kind: ParamType::Uint(8)}, Param{name: "pubkey".to_string(), kind: ParamType::Uint(256)}, Param{name: "test".to_string(), kind: ParamType::Tuple(vec![Param{name: "index1".to_string(), kind: ParamType::Uint(8)}, Param{name: "index2".to_string(), kind: ParamType::Uint(8)}])}])}];
             builder = builder.inputs(input);
             builder.build()
             })
         }
 
-        pub fn submit_transaction() -> &'static ton_abi::Function {
+        pub fn test3() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
             FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("submitTransaction");
-            let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "allBalance".to_string(), kind: ParamType::Bool},Param{name: "payload".to_string(), kind: ParamType::Cell}];
-            builder = builder.inputs(input);
-            let output = vec![Param{name: "transId".to_string(), kind: ParamType::Uint(64)}];
-            builder = builder.outputs(output);
-            builder.build()
-            })
-        }
-
-        pub fn test_type() -> &'static ton_abi::Function {
-            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| {
-            let mut builder = FunctionBuilder::new("testType");
-            let input = vec![Param{name: "type".to_string(), kind: ParamType::Uint(8)}];
+            let mut builder = FunctionBuilder::new("test3");
+            let input = vec![Param{name: "test".to_string(), kind: ParamType::Tuple(vec![Param{name: "index1".to_string(), kind: ParamType::Uint(8)}, Param{name: "index2".to_string(), kind: ParamType::Uint(8)}])}];
             builder = builder.inputs(input);
             builder.build()
             })
@@ -138,160 +42,47 @@ pub mod functions {
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
     pub struct TupleStruct0 {
-        pub index: u8,
-        pub pubkey: ton_types::UInt256,
+        #[abi]
+        pub index1: u8,
+        #[abi]
+        pub index2: u8,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
     pub struct TupleStruct1 {
-        pub id: u64,
-        #[abi(name = "confirmationsMask")]
-        pub confirmations_mask: u32,
-        #[abi(name = "signsRequired")]
-        pub signs_required: u8,
-        #[abi(name = "signsReceived")]
-        pub signs_received: u8,
-        pub creator: ton_types::UInt256,
+        #[abi]
         pub index: u8,
-        #[serde(with = "nekoton_utils::serde_address")]
-        pub dest: ton_block::MsgAddressInt,
-        pub value: num_bigint::BigUint,
-        #[abi(name = "sendFlags")]
-        pub send_flags: u16,
-        #[serde(with = "nekoton_utils::serde_cell")]
-        pub payload: ton_types::Cell,
-        pub bounce: bool,
+        #[abi]
+        pub pubkey: ton_types::UInt256,
+        #[abi]
+        pub test: TupleStruct1,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct AcceptTransferInput {
-        pub payload: Vec<u8>,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct ConfirmTransactionInput {
-        #[abi(name = "transactionId")]
-        pub transaction_id: u64,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct ConstructorInput {
-        pub owners: ton_types::UInt256,
-        #[abi(name = "reqConfirms")]
-        pub req_confirms: u8,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct GetCustodiansOutput {
-        pub custodians: TupleStruct0,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct GetParametersOutput {
-        #[abi(name = "maxQueuedTransactions")]
-        pub max_queued_transactions: u8,
-        #[abi(name = "maxCustodianCount")]
-        pub max_custodian_count: u8,
-        #[abi(name = "expirationTime")]
-        pub expiration_time: u64,
-        #[abi(name = "minValue")]
-        pub min_value: num_bigint::BigUint,
-        #[abi(name = "requiredTxnConfirms")]
-        pub required_txn_confirms: u8,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct GetTransactionInput {
-        #[abi(name = "transactionId")]
-        pub transaction_id: u64,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct GetTransactionOutput {
-        pub trans: TupleStruct1,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct GetTransactionIdsOutput {
-        pub ids: u64,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct GetTransactionsOutput {
-        pub transactions: TupleStruct1,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct IsConfirmedInput {
-        pub mask: u32,
+    pub struct TupleStruct3 {
+        #[abi]
         pub index: u8,
+        #[abi]
+        pub pubkey: ton_types::UInt256,
+        #[abi]
+        pub test: TupleStruct3,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct IsConfirmedOutput {
-        pub confirmed: bool,
+    pub struct Test1Output {
+        #[abi]
+        pub custodians: TupleStruct1,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct SendTransactionInput {
-        #[serde(with = "nekoton_utils::serde_address")]
-        pub dest: ton_block::MsgAddressInt,
-        pub value: num_bigint::BigUint,
-        pub bounce: bool,
-        pub flags: u8,
-        #[serde(with = "nekoton_utils::serde_cell")]
-        pub payload: ton_types::Cell,
+    pub struct Test2Input {
+        #[abi]
+        pub custodians: TupleStruct3,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct SubmitTransactionInput {
-        #[serde(with = "nekoton_utils::serde_address")]
-        pub dest: ton_block::MsgAddressInt,
-        pub value: num_bigint::BigUint,
-        pub bounce: bool,
-        #[abi(name = "allBalance")]
-        pub all_balance: bool,
-        #[serde(with = "nekoton_utils::serde_cell")]
-        pub payload: ton_types::Cell,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbiPlain)]
-    pub struct SubmitTransactionOutput {
-        #[abi(name = "transId")]
-        pub trans_id: u64,
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct TestTypeInput {
-        #[abi(name = "type")]
-        pub ty: u8,
-    }
-}
-
-pub mod events {
-    use serde::{Serialize, Deserialize};
-    use nekoton_abi::{UnpackAbi, UnpackAbiPlain, PackAbi, UnpackToken, UnpackerError, UnpackerResult, BuildTokenValue, TokenValueExt, EventBuilder};
-    use ton_abi::{Param, ParamType};
-    use std::collections::HashMap;
-    use once_cell::sync::OnceCell;
-
-    #[derive(Copy, Clone, Debug)]
-    pub struct SafeMultisigWalletAbi;
-
-    impl SafeMultisigWalletAbi {
-        pub fn transfer_accepted() -> &'static ton_abi::Event {
-            static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();
-            EVENT.get_or_init(|| {
-            let mut builder = EventBuilder::new("TransferAccepted");
-            let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes}];
-            builder = builder.inputs(input);
-            builder.build()
-            })
-        }
-    }
-
-    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
-    pub struct TransferAcceptedInput {
-        pub payload: Vec<u8>,
+    pub struct Test3Input {
+        #[abi]
+        pub test: TupleStruct0,
     }
 }

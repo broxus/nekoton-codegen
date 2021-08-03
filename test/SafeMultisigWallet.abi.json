@@ -3,114 +3,24 @@
 	"header": ["pubkey", "time", "expire"],
 	"functions": [
 		{
-			"name": "constructor",
-			"inputs": [
-				{"name":"owners","type":"uint256[]"},
-				{"name":"reqConfirms","type":"uint8"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "acceptTransfer",
-			"inputs": [
-				{"name":"payload","type":"bytes"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "sendTransaction",
-			"inputs": [
-				{"name":"dest","type":"address"},
-				{"name":"value","type":"uint128"},
-				{"name":"bounce","type":"bool"},
-				{"name":"flags","type":"uint8"},
-				{"name":"payload","type":"cell"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "submitTransaction",
-			"inputs": [
-				{"name":"dest","type":"address"},
-				{"name":"value","type":"uint128"},
-				{"name":"bounce","type":"bool"},
-				{"name":"allBalance","type":"bool"},
-				{"name":"payload","type":"cell"}
-			],
-			"outputs": [
-				{"name":"transId","type":"uint64"}
-			]
-		},
-		{
-			"name": "confirmTransaction",
-			"inputs": [
-				{"name":"transactionId","type":"uint64"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "isConfirmed",
-			"inputs": [
-				{"name":"mask","type":"uint32"},
-				{"name":"index","type":"uint8"}
-			],
-			"outputs": [
-				{"name":"confirmed","type":"bool"}
-			]
-		},
-		{
-			"name": "getParameters",
+			"name": "test1",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxQueuedTransactions","type":"uint8"},
-				{"name":"maxCustodianCount","type":"uint8"},
-				{"name":"expirationTime","type":"uint64"},
-				{"name":"minValue","type":"uint128"},
-				{"name":"requiredTxnConfirms","type":"uint8"}
+				{"components":[{"name":"index","type":"uint8"},{"name":"pubkey","type":"uint256"},{"components":[{"name":"index1","type":"uint8"}, {"name":"index2","type":"uint8"}],"name":"test","type":"tuple"}],"name":"custodians","type":"tuple[]"}
 			]
 		},
 		{
-			"name": "getTransaction",
+			"name": "test2",
 			"inputs": [
-				{"name":"transactionId","type":"uint64"}
+				{"components":[{"name":"index","type":"uint8"},{"name":"pubkey","type":"uint256"},{"components":[{"name":"index1","type":"uint8"}, {"name":"index2","type":"uint8"}],"name":"test","type":"tuple"}],"name":"custodians","type":"tuple"}
 			],
-			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"confirmationsMask","type":"uint32"},{"name":"signsRequired","type":"uint8"},{"name":"signsReceived","type":"uint8"},{"name":"creator","type":"uint256"},{"name":"index","type":"uint8"},{"name":"dest","type":"address"},{"name":"value","type":"uint128"},{"name":"sendFlags","type":"uint16"},{"name":"payload","type":"cell"},{"name":"bounce","type":"bool"}],"name":"trans","type":"tuple"}
-			]
+			"outputs": []
 		},
 		{
-			"name": "getTransactions",
+			"name": "test3",
 			"inputs": [
-			],
-			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"confirmationsMask","type":"uint32"},{"name":"signsRequired","type":"uint8"},{"name":"signsReceived","type":"uint8"},{"name":"creator","type":"uint256"},{"name":"index","type":"uint8"},{"name":"dest","type":"address"},{"name":"value","type":"uint128"},{"name":"sendFlags","type":"uint16"},{"name":"payload","type":"cell"},{"name":"bounce","type":"bool"}],"name":"transactions","type":"tuple[]"}
-			]
-		},
-		{
-			"name": "getTransactionIds",
-			"inputs": [
-			],
-			"outputs": [
-				{"name":"ids","type":"uint64[]"}
-			]
-		},
-		{
-			"name": "getCustodians",
-			"inputs": [
-			],
-			"outputs": [
-				{"components":[{"name":"index","type":"uint8"},{"name":"pubkey","type":"uint256"}],"name":"custodians","type":"tuple[]"}
-			]
-		},
-		{
-			"name": "testType",
-			"inputs": [
-				{"name": "type", "type": "uint8"}
+				{"components":[{"name":"index1","type":"uint8"}, {"name":"index2","type":"uint8"}],"name":"test","type":"tuple"}
 			],
 			"outputs": []
 		}
@@ -118,13 +28,5 @@
 	"data": [
 	],
 	"events": [
-		{
-			"name": "TransferAccepted",
-			"inputs": [
-				{"name":"payload","type":"bytes"}
-			],
-			"outputs": [
-			]
-		}
 	]
 }
