@@ -124,6 +124,16 @@ pub mod functions {
             builder.build()
             })
         }
+
+        pub fn test_type() -> &'static ton_abi::Function {
+            static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
+            FUNCTION.get_or_init(|| {
+            let mut builder = FunctionBuilder::new("testType");
+            let input = vec![Param{name: "type".to_string(), kind: ParamType::Uint(8)}];
+            builder = builder.inputs(input);
+            builder.build()
+            })
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
@@ -249,6 +259,12 @@ pub mod functions {
     pub struct SubmitTransactionOutput {
         #[abi(name = "transId")]
         pub trans_id: u64,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PackAbi, UnpackAbi)]
+    pub struct TestTypeInput {
+        #[abi(name = "type")]
+        pub ty: u8,
     }
 }
 

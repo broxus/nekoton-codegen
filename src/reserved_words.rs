@@ -1,4 +1,4 @@
-const RESERVED_WORDS: [&str; 58] = [
+const RESERVED_WORDS: &[&str] = &[
     "abstract",
     "alignof",
     "as",
@@ -59,11 +59,15 @@ const RESERVED_WORDS: [&str; 58] = [
     "yield",
 ];
 
-pub fn process_field(mut name: String) -> String {
-    if RESERVED_WORDS.binary_search(&&*name).is_ok() {
-        name.pop();
-        name
+const KNOWN_REPLACEMENTS: &[(&str, &str)] = &[("type", "ty")];
+
+pub fn process_field(name: &str) -> String {
+    if RESERVED_WORDS.binary_search(&name).is_ok() {
+        match KNOWN_REPLACEMENTS.binary_search_by_key(&name, |&(a, _)| a) {
+            Ok(index) => KNOWN_REPLACEMENTS[index].1.to_string(),
+            Err(_) => format!("_{}", name),
+        }
     } else {
-        name
+        name.to_string()
     }
 }

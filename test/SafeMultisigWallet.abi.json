@@ -106,6 +106,13 @@
 			"outputs": [
 				{"components":[{"name":"index","type":"uint8"},{"name":"pubkey","type":"uint256"}],"name":"custodians","type":"tuple[]"}
 			]
+		},
+		{
+			"name": "testType",
+			"inputs": [
+				{"name": "type", "type": "uint8"}
+			],
+			"outputs": []
 		}
 	],
 	"data": [

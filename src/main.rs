@@ -46,7 +46,7 @@ fn main() -> Result<()> {
 
     match args.out_path {
         None => {
-            println!("{}", result);
+            print!("{}", result);
         }
         Some(a) => {
             std::fs::write(&a, result)?;
@@ -327,7 +327,7 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         let field_name = name
             .strip_prefix("_")
             .unwrap_or_else(|| name.as_str())
-            .pipe(|x| process_field(x.to_string()))
+            .pipe(process_field)
             .to_snake();
         let field = "pub ".to_string() + &field_name;
         let mut field = if field_name != name {
