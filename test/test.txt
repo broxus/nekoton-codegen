@@ -9,9 +9,9 @@ pub mod functions {
     pub struct SafeMultisigWalletAbi;
 
     impl SafeMultisigWalletAbi {
-        pub fn accept_transfer() -> ton_abi::Function {
+        pub fn accept_transfer() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("acceptTransfer");
             let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes}];
             builder = builder.inputs(input);
@@ -19,9 +19,9 @@ pub mod functions {
             })
         }
 
-        pub fn confirm_transaction() -> ton_abi::Function {
+        pub fn confirm_transaction() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("confirmTransaction");
             let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)}];
             builder = builder.inputs(input);
@@ -29,9 +29,9 @@ pub mod functions {
             })
         }
 
-        pub fn constructor() -> ton_abi::Function {
+        pub fn constructor() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("constructor");
             let input = vec![Param{name: "owners".to_string(), kind: ParamType::Array(Box::new(ParamType::Uint(256)))},Param{name: "reqConfirms".to_string(), kind: ParamType::Uint(8)}];
             builder = builder.inputs(input);
@@ -39,9 +39,9 @@ pub mod functions {
             })
         }
 
-        pub fn get_custodians() -> ton_abi::Function {
+        pub fn get_custodians() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getCustodians");
             let output = vec![Param{name: "custodians".to_string(), kind: ParamType::Array(Box::new(Param{name: "index".to_string(), kind: ParamType::Uint(8)}))}];
             builder = builder.outputs(output);
@@ -49,9 +49,9 @@ pub mod functions {
             })
         }
 
-        pub fn get_parameters() -> ton_abi::Function {
+        pub fn get_parameters() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getParameters");
             let output = vec![Param{name: "maxQueuedTransactions".to_string(), kind: ParamType::Uint(8)},Param{name: "maxCustodianCount".to_string(), kind: ParamType::Uint(8)},Param{name: "expirationTime".to_string(), kind: ParamType::Uint(64)},Param{name: "minValue".to_string(), kind: ParamType::Uint(128)},Param{name: "requiredTxnConfirms".to_string(), kind: ParamType::Uint(8)}];
             builder = builder.outputs(output);
@@ -59,9 +59,9 @@ pub mod functions {
             })
         }
 
-        pub fn get_transaction() -> ton_abi::Function {
+        pub fn get_transaction() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getTransaction");
             let input = vec![Param{name: "transactionId".to_string(), kind: ParamType::Uint(64)}];
             builder = builder.inputs(input);
@@ -71,9 +71,9 @@ pub mod functions {
             })
         }
 
-        pub fn get_transaction_ids() -> ton_abi::Function {
+        pub fn get_transaction_ids() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getTransactionIds");
             let output = vec![Param{name: "ids".to_string(), kind: ParamType::Array(Box::new(ParamType::Uint(64)))}];
             builder = builder.outputs(output);
@@ -81,9 +81,9 @@ pub mod functions {
             })
         }
 
-        pub fn get_transactions() -> ton_abi::Function {
+        pub fn get_transactions() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("getTransactions");
             let output = vec![Param{name: "transactions".to_string(), kind: ParamType::Array(Box::new(Param{name: "id".to_string(), kind: ParamType::Uint(64)}))}];
             builder = builder.outputs(output);
@@ -91,9 +91,9 @@ pub mod functions {
             })
         }
 
-        pub fn is_confirmed() -> ton_abi::Function {
+        pub fn is_confirmed() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("isConfirmed");
             let input = vec![Param{name: "mask".to_string(), kind: ParamType::Uint(32)},Param{name: "index".to_string(), kind: ParamType::Uint(8)}];
             builder = builder.inputs(input);
@@ -103,9 +103,9 @@ pub mod functions {
             })
         }
 
-        pub fn send_transaction() -> ton_abi::Function {
+        pub fn send_transaction() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("sendTransaction");
             let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "flags".to_string(), kind: ParamType::Uint(8)},Param{name: "payload".to_string(), kind: ParamType::Cell}];
             builder = builder.inputs(input);
@@ -113,9 +113,9 @@ pub mod functions {
             })
         }
 
-        pub fn submit_transaction() -> ton_abi::Function {
+        pub fn submit_transaction() -> &'static ton_abi::Function {
             static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();
-            FUNCTION.get_or_init(|| ({
+            FUNCTION.get_or_init(|| {
             let mut builder = FunctionBuilder::new("submitTransaction");
             let input = vec![Param{name: "dest".to_string(), kind: ParamType::Address},Param{name: "value".to_string(), kind: ParamType::Uint(128)},Param{name: "bounce".to_string(), kind: ParamType::Bool},Param{name: "allBalance".to_string(), kind: ParamType::Bool},Param{name: "payload".to_string(), kind: ParamType::Cell}];
             builder = builder.inputs(input);
@@ -263,9 +263,9 @@ pub mod events {
     pub struct SafeMultisigWalletAbi;
 
     impl SafeMultisigWalletAbi {
-        pub fn transfer_accepted() -> ton_abi::Event {
+        pub fn transfer_accepted() -> &'static ton_abi::Event {
             static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();
-            EVENT.get_or_init(|| ({
+            EVENT.get_or_init(|| {
             let mut builder = EventBuilder::new("TransferAccepted");
             let input = vec![Param{name: "payload".to_string(), kind: ParamType::Bytes}];
             builder = builder.inputs(input);

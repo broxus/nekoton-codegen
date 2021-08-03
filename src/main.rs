@@ -74,7 +74,7 @@ fn generate_contract_binding(fh: &mut dyn std::io::Read, contract_name: &str) ->
         let events = events_gen(BTreeMap::from_iter(events.clone()), contract_name)?;
         *scope.new_module("events") = events;
     }
-    Ok(scope.to_string())
+    Ok(format!("{}\n", scope.to_string()))
 }
 
 fn module_imports(mut module: Module) -> Module {
@@ -181,9 +181,9 @@ fn params_to_string(params: Vec<Param>) -> String {
 fn function_impl(function: Function) -> codegen::Function {
     let mut fun = codegen::Function::new(&function.name.to_snake())
         .vis("pub")
-        .ret("ton_abi::Function")
+        .ret("&'static ton_abi::Function")
         .line("static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();")
-        .line("FUNCTION.get_or_init(|| ({")
+        .line("FUNCTION.get_or_init(|| {")
         .clone();
 
     if !(function.inputs.is_empty() && function.outputs.is_empty()) {
@@ -213,9 +213,9 @@ fn function_impl(function: Function) -> codegen::Function {
 fn event_impl(event: Event) -> codegen::Function {
     let mut fun = codegen::Function::new(&event.name.to_snake())
         .vis("pub")
-        .ret("ton_abi::Event")
+        .ret("&'static ton_abi::Event")
         .line("static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();")
-        .line("EVENT.get_or_init(|| ({")
+        .line("EVENT.get_or_init(|| {")
         .clone();
 
     if !(event.inputs.is_empty()) {
