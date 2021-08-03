@@ -1,7 +1,7 @@
 # nekoton codegen
 ## Installation
 ```bash
-cargo install --git https://gitlab.dexpa.io/beton/nekoton-codegen.git
+cargo install --git https://github.com/broxus/nekoton-codegen
 ```
 
 ## Usage
