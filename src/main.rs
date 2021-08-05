@@ -105,7 +105,7 @@ fn main() -> Result<()> {
         (_, Some(a)) => models_ = models_.push_impl(a).clone(),
         _ => {}
     });
-    let mut models = module_imports(models_);
+    let mut models = models_.import("super::prelude", "*").clone();
     match args.out_path {
         None => {
             for md in scopes {
@@ -185,7 +185,10 @@ fn generate_contract_binding(
 }
 
 fn module_imports(mut module: Module) -> Module {
-    module.vis("pub").import("super::prelude", "*").clone()
+    module
+        .vis("pub")
+        .import("super::super::prelude", "*")
+        .clone()
 }
 
 type ImplData = Vec<(Option<codegen::Impl>, Option<codegen::Impl>)>;
