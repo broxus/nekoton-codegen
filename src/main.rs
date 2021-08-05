@@ -2,13 +2,13 @@
 
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
-use codegen::{Field, Module, Struct};
-use itertools::Itertools;
+use codegen::{Field, Module, Scope, Struct};
+use itertools::{join, Itertools};
 use nekoton_utils::NoFailure;
 use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
@@ -22,6 +22,7 @@ struct Args {
     #[clap(short)]
     data_path: PathBuf,
     #[clap(short)]
+    /// output dir path
     out_path: Option<PathBuf>,
     #[clap(short)]
     /// Run or not cargo fmt
@@ -30,51 +31,128 @@ struct Args {
 
 fn main() -> Result<()> {
     let args: Args = Args::try_parse()?;
-    let mut abi = std::fs::File::open(&args.data_path).unwrap();
-    let contract_name = args
-        .data_path
-        .file_name()
-        .expect("No filename in contract path")
-        .to_string_lossy();
+    let mut models = Vec::new();
+    let mut scopes = BTreeMap::new();
+    let mut struct_id = 0;
+    match &args.out_path {
+        None => {}
+        Some(a) => {
+            std::fs::create_dir_all(a.join("abi"))?;
+        }
+    }
+    for p in std::fs::read_dir(args.data_path)? {
+        let p = p?;
+        let meta = p.metadata()?;
+        if meta.is_dir() {
+            continue;
+        }
+        let contract_name = p.file_name().to_string_lossy().to_string();
+        let contract_name = match contract_name.strip_suffix(".json") {
+            None => continue,
+            Some(a) => a,
+        };
+        match &args.out_path {
+            None => {}
+            Some(a) => {
+                std::fs::copy(p.path(), a.join("abi").join(p.file_name())).context("Can't copy")?;
+            }
+        };
+        let contract_name = contract_name
+            .replace(|x| !char::is_alphanumeric(x), "_")
+            .to_camel();
+        let abi = std::fs::read_to_string(&p.path())?;
+        let result = generate_contract_binding(abi, &contract_name, &mut struct_id)?;
+        models.extend(result.1);
+        scopes.insert(contract_name, result.0);
+    }
 
-    let contract_name = contract_name
-        .strip_suffix(".json")
-        .expect("no json in abi name")
-        .replace(|x| !char::is_alphanumeric(x), "_")
-        .to_camel();
-    let result = generate_contract_binding(&mut abi, &contract_name)?;
-
+    let mut models_ = Module::new("models");
+    println!("SSSS: FINAL");
+    dedup(models)
+        .into_iter()
+        .sorted_by(|a, b| a.ty.cmp(&b.ty))
+        .dedup_by(|a, b| a.ty.eq(&b.ty))
+        .map(construct_struct)
+        .for_each(|x| models_ = models_.push_struct(x).clone());
     match args.out_path {
         None => {
-            print!("{}", result);
+            for md in scopes {
+                println!("{}\n{}", md.0, md.1.to_string());
+            }
+            println!("{}", models_.scope().to_string());
         }
         Some(a) => {
-            std::fs::write(&a, result)?;
-            if args.fmt {
-                std::process::Command::new("rustfmt").args(&[a]).spawn()?;
+            let mut imports = vec![];
+            std::fs::create_dir_all(&a)?;
+            let models_path = a.join(Path::new("models.rs"));
+            imports.push("models".to_string());
+            for (name, mode) in scopes {
+                imports.push(name.clone());
+                let file_path = PathBuf::from(name + ".rs").pipe(|x| a.join(x));
+                std::fs::write(&file_path, mode.to_string())?;
+                if args.fmt {
+                    std::process::Command::new("rustfmt")
+                        .args(&[file_path])
+                        .spawn()?;
+                }
             }
+            std::fs::write(&models_path, models_.scope().to_string())?;
+            if args.fmt {
+                std::process::Command::new("rustfmt")
+                    .args(&[models_path])
+                    .spawn()?;
+            };
+            let md_path = a.join(Path::new("mod.rs"));
+            let res = imports
+                .into_iter()
+                .map(|x| format!("pub mod {};", x))
+                .join("\n");
+            std::fs::write(&md_path, res)?;
         }
     };
     Ok(())
 }
 
-fn generate_contract_binding(fh: &mut dyn std::io::Read, contract_name: &str) -> Result<String> {
-    let data = ton_abi::Contract::load(fh)
+fn generate_contract_binding(
+    abi: String,
+    contract_name: &str,
+    struct_id: &mut usize,
+) -> Result<(Scope, Vec<StructData>)> {
+    let data = ton_abi::Contract::load(std::io::Cursor::new(abi))
         .convert()
         .context("Failed parsing json as contract")?;
     let mut scope = codegen::Scope::new();
-
+    let mut models_data = vec![];
     let functions = data.functions();
     if !functions.is_empty() {
-        let functions = functions_gen(BTreeMap::from_iter(functions.clone()), &contract_name)?;
-        *scope.new_module("functions") = functions;
+        let functions = functions_gen(
+            BTreeMap::from_iter(functions.clone()),
+            &contract_name,
+            struct_id,
+        )?;
+        *scope.new_module("functions") = functions.0;
+        models_data.extend(functions.1)
     }
     let events = data.events();
     if !events.is_empty() {
-        let events = events_gen(BTreeMap::from_iter(events.clone()), contract_name)?;
-        *scope.new_module("events") = events;
+        let events = events_gen(
+            BTreeMap::from_iter(events.clone()),
+            contract_name,
+            struct_id,
+        )?;
+        *scope.new_module("events") = events.0;
+        models_data.extend(events.1)
     }
-    Ok(format!("{}\n", scope.to_string()))
+    models_data
+        .iter()
+        .filter(|x| x.ty.starts_with("Tuple"))
+        .for_each(|x| println!("const FIN: {}", x.ty));
+    let models_data = dedup(models_data);
+    models_data
+        .iter()
+        .filter(|x| x.ty.starts_with("Tuple"))
+        .for_each(|x| println!("let FIN: {}", x.ty));
+    Ok((scope, models_data))
 }
 
 fn module_imports(mut module: Module) -> Module {
@@ -96,25 +174,31 @@ fn module_imports(mut module: Module) -> Module {
         .clone()
 }
 
-fn events_gen(input: BTreeMap<String, Event>, contract_name: &str) -> Result<Module> {
+fn events_gen(
+    input: BTreeMap<String, Event>,
+    contract_name: &str,
+    struct_id: &mut usize,
+) -> Result<(Module, Vec<StructData>)> {
     let mut md = Module::new("events");
-    let mut struct_id = 0;
     let mut structs = vec![];
     let mut events = vec![];
     for (name, event) in input {
         if event.inputs.is_empty() {
             continue;
         }
-        for strct in gen_struct(&event.inputs, name.clone() + "Input", &mut struct_id)? {
+        for strct in gen_struct(&event.inputs, name.clone() + "Input", struct_id) {
             structs.push(strct);
         }
         events.push(event_impl(event));
     }
     struct_impl(contract_name, events, &mut md);
-    dedup(&mut md, &mut structs);
-    Ok(module_imports(md)
-        .import("nekoton_abi", "EventBuilder")
-        .clone())
+    let structs = dedup(structs);
+    Ok((
+        module_imports(md)
+            .import("nekoton_abi", "EventBuilder")
+            .clone(),
+        structs,
+    ))
 }
 
 fn params_to_string(params: Vec<Param>) -> String {
@@ -220,9 +304,12 @@ fn event_impl(event: Event) -> codegen::Function {
     fun.line("builder.build()").line("})").clone()
 }
 
-fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Result<Module> {
+fn functions_gen(
+    input: BTreeMap<String, Function>,
+    contract_name: &str,
+    struct_id: &mut usize,
+) -> Result<(Module, Vec<StructData>)> {
     let mut md = Module::new("functions");
-    let mut struct_id = 0;
     let mut structs = vec![];
     let mut funs = vec![];
     for (name, fun) in input {
@@ -230,19 +317,22 @@ fn functions_gen(input: BTreeMap<String, Function>, contract_name: &str) -> Resu
             continue;
         }
         funs.push(function_impl(fun.clone()));
-        for strct in gen_struct(&fun.inputs, name.clone() + "Input", &mut struct_id)? {
+        for strct in gen_struct(&fun.inputs, name.clone() + "Input", struct_id) {
             structs.push(strct);
         }
-        for strct in gen_struct(&fun.outputs, name + "Output", &mut struct_id)? {
+        for strct in gen_struct(&fun.outputs, name + "Output", struct_id) {
             structs.push(strct);
         }
     }
     struct_impl(contract_name, funs, &mut md);
-    dedup(&mut md, &mut structs);
+    let structs = dedup(structs);
 
-    Ok(module_imports(md)
-        .import("nekoton_abi", "FunctionBuilder")
-        .clone())
+    Ok((
+        module_imports(md)
+            .import("nekoton_abi", "FunctionBuilder")
+            .clone(),
+        structs,
+    ))
 }
 
 fn struct_impl(struct_name: &str, impls: Vec<codegen::Function>, md: &mut Module) {
@@ -259,58 +349,62 @@ fn struct_impl(struct_name: &str, impls: Vec<codegen::Function>, md: &mut Module
 }
 
 /// Searching structs with the same args and merging them
-fn dedup(md: &mut Module, structs: &mut Vec<StructData>) {
-    let mut known_types = BTreeMap::new();
-
-    let mut deduped_structs = vec![];
+fn dedup(structs: Vec<StructData>) -> Vec<StructData> {
+    let mut output = vec![];
+    let mut types_to_struct_map = BTreeMap::new();
+    let mut normal_structs = vec![];
     let mut tuple_structs = BTreeMap::new(); //Map of same tuples. Like Tuple1(int) -> Tuple2(int)
-    let mut tuple_ctr = 0;
     for str in structs {
-        let name = struct_name(&str.str);
+        let name = str.ty.clone();
         if !name.contains("TupleStruct") {
-            if str.types.is_empty() {
+            if str.fields.is_empty() {
                 continue;
             }
-            deduped_structs.push(str.clone());
+            normal_structs.push(str.clone());
             continue;
         }
-        let new_str = known_types.entry(str.types.clone()).or_insert_with(|| {
-            construct_struct(str.types.clone(), &format!("TupleStruct{}", tuple_ctr))
-        });
-        tuple_ctr += 1;
+        println!("ALL: {}, {}", name, str.fields.len());
+        for field in &str.fields {
+            println!("{} {}", str.ty, field.name);
+        }
+        let new_str = types_to_struct_map
+            .entry(str.fields.clone())
+            .or_insert_with(|| str.clone());
         tuple_structs.insert(name, new_str.clone());
     }
-    for str in &mut deduped_structs {
-        str.types
+    for str in &mut normal_structs {
+        str.fields
             .iter_mut()
-            .for_each(|x| match tuple_structs.get(&x.1) {
+            .for_each(|x| match tuple_structs.get(&x.ty) {
                 None => (),
-                Some(ty) => {
-                    x.1 = struct_name(ty);
+                Some(str) => {
+                    x.ty = str.ty.clone();
                 }
             });
     }
+    println!("Deduping");
     tuple_structs
         .values()
         .into_iter()
-        .sorted_by(|a, b| struct_name(a).cmp(&struct_name(b)))
-        .dedup_by(|a, b| struct_name(a).eq(&struct_name(b)))
+        .inspect(|x| println!("DUPPED: {}", x.ty))
+        .sorted_by(|a, b| a.ty.cmp(&b.ty))
+        .dedup_by(|a, b| a.ty.eq(&b.ty))
+        .inspect(|x| println!("DEDUPPED :{}", x.ty))
         .for_each(|x| {
-            *md = md.push_struct(x.clone()).clone();
+            output.push(x.clone());
         });
 
-    deduped_structs
-        .into_iter()
-        .map(|x| construct_struct(x.types, &struct_name(&x.str)))
-        .for_each(|x| {
-            *md = md.push_struct(x).clone();
-        });
+    normal_structs.into_iter().for_each(|x| {
+        output.push(x.clone());
+    });
+    output
 }
 
-fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
-    let mut str = Struct::new(&name.to_camel());
+fn construct_struct(data: StructData) -> Struct {
+    let mut str = Struct::new(&data.ty.to_camel());
 
-    for (name, ty) in types {
+    for field in data.fields {
+        let FieldData { name, ty, .. } = field;
         let field_name = name
             .strip_prefix("_")
             .unwrap_or_else(|| name.as_str())
@@ -348,7 +442,7 @@ fn construct_struct(types: Vec<(String, String)>, name: &str) -> Struct {
         .vis("pub")
         .clone();
 
-    if name.contains("Output") {
+    if data.ty.contains("Output") {
         str.derive("UnpackAbiPlain").clone()
     } else {
         str.derive("UnpackAbi").clone()
@@ -360,96 +454,107 @@ enum MappedType {
     Ty {
         ty: String,
         name: String,
+        abi_type: String,
     },
-    Tuple {
-        types: Vec<Box<MappedType>>,
+    Tuple(Vec<StructData>),
+    HashMap {
+        ty: String,
         name: String,
+        abi_type: String,
+        tuple: Vec<StructData>,
     },
 }
 
-fn struct_name(str: &Struct) -> String {
-    let mut ty = String::new();
-    let mut formatter = codegen::Formatter::new(&mut ty);
-    str.ty().fmt(&mut formatter).unwrap();
-    ty
+#[derive(Clone, Debug)]
+struct StructData {
+    ty: String,
+    fields: Vec<FieldData>,
 }
 
-fn map(types: Vec<Box<MappedType>>, id: &mut usize) -> Vec<StructData> {
-    let mut structs = vec![];
-    let mut strct = Struct::new(&format!("TupleStruct{}", id));
+#[derive(Clone, Hash, Eq, PartialOrd, PartialEq, Ord, Debug)]
+struct FieldData {
+    name: String,
+    ty: String,
+    abi_type: String,
+}
+
+impl StructData {
+    fn new(types: Vec<FieldData>, ty: String) -> Self {
+        Self { fields: types, ty }
+    }
+}
+
+fn gen_struct(types: &[Param], name: String, struct_id: &mut usize) -> Vec<StructData> {
+    let mut res = vec![];
     let mut struct_types = vec![];
-    *id += 1;
+    for param in types {
+        let mapped_types = map_ton_types(param.kind.clone(), param.name.clone(), struct_id);
+        match mapped_types {
+            MappedType::Ty { ty, name, abi_type } => {
+                struct_types.push(FieldData { name, ty, abi_type });
+            }
+            MappedType::Tuple(a) => {
+                res.extend(a.clone());
+                let mapped_struct = a.last().unwrap();
+                struct_types.push(FieldData {
+                    name: name.clone(),
+                    ty: mapped_struct.ty.clone(),
+                    abi_type: "".to_string(),
+                });
+            }
+            MappedType::HashMap {
+                ty,
+                name,
+                abi_type,
+                tuple,
+            } => {
+                struct_types.push(FieldData { name, ty, abi_type });
+                res.extend(tuple);
+            }
+        };
+    }
+    res.push(StructData::new(struct_types, name));
+    res
+}
+
+/// Mapped structure name
+fn map(types: Vec<Box<MappedType>>, ty: String) -> Vec<StructData> {
+    let mut struct_types = vec![];
+    let mut structs = vec![];
     for ty in types {
         match *ty {
-            MappedType::Ty { ty, name } => {
-                struct_types.push((name.clone(), ty.clone()));
-                strct = strct.push_field(Field::new(&name, ty)).clone();
+            MappedType::Ty { ty, name, abi_type } => {
+                struct_types.push(FieldData {
+                    name,
+                    ty: ty.clone(),
+                    abi_type,
+                });
             }
-            MappedType::Tuple { types, name } => {
-                let res = map(types, id);
-                let mapped_struct = res.last().unwrap();
-
-                let ty = struct_name(&mapped_struct.str);
-
-                struct_types.push((name.clone(), ty));
-                strct = strct
-                    .push_field(Field::new(&name, mapped_struct.str.ty()))
-                    .clone();
-                structs.extend(&mut res.into_iter());
+            MappedType::Tuple(a) => return a,
+            MappedType::HashMap {
+                ty,
+                name,
+                abi_type,
+                tuple,
+            } => {
+                struct_types.push(FieldData { name, ty, abi_type });
+                structs.extend(tuple.into_iter());
             }
         }
     }
     structs.push(StructData {
-        str: strct,
-        types: struct_types,
+        ty,
+        fields: struct_types,
     });
     structs
 }
 
-#[derive(Clone)]
-struct StructData {
-    str: Struct,
-    /// name, type
-    types: Vec<(String, String)>,
-}
-
-impl StructData {
-    fn new(str: Struct, types: Vec<(String, String)>) -> Self {
-        Self { str, types }
-    }
-}
-
-fn gen_struct(types: &[Param], name: String, struct_id: &mut usize) -> Result<Vec<StructData>> {
-    let mut res = vec![];
-    let mut str = Struct::new(&name);
-    let mut struct_types: Vec<(String, String)> = vec![];
-    for param in types {
-        let mapped_types = map_ton_types(param.kind.clone(), param.name.clone())?;
-        match mapped_types {
-            MappedType::Ty { ty, name } => {
-                struct_types.push((name.to_string(), ty.clone()));
-                str = str.field(&name, ty).clone();
-            }
-            MappedType::Tuple { types, name } => {
-                let ty = map(types, struct_id);
-                res.extend(ty.clone());
-
-                let mapped_struct = ty.last().unwrap();
-                str = str.field(&name, mapped_struct.str.ty()).clone();
-
-                let ty = struct_name(&mapped_struct.str);
-                struct_types.push((name, ty.clone()));
-            }
-        };
-    }
-    res.push(StructData::new(str, struct_types));
-    Ok(res)
-}
-
-fn map_ton_types(ty: ParamType, field_name: String) -> Result<MappedType> {
+/// Maps top types to `StructData`
+fn map_ton_types(ty: ParamType, field_name: String, id: &mut usize) -> MappedType {
+    let abi_type = ty.to_string();
     let ty = match ty {
         ParamType::Unknown => {
-            anyhow::bail!("Bad type")
+            panic!("Bad type")
         }
         ParamType::Uint(a) => match a {
             8 => "u8",
@@ -473,30 +578,42 @@ fn map_ton_types(ty: ParamType, field_name: String) -> Result<MappedType> {
         .to_string(),
         ParamType::Bool => "bool".to_string(),
         ParamType::Tuple(a) => {
-            let ty: Vec<Box<MappedType>> = a
+            *id += 1;
+            let types: Vec<Box<MappedType>> = a
                 .into_iter()
-                .map(|x| map_ton_types(x.kind, x.name).unwrap())
+                .map(|x| map_ton_types(x.kind, x.name, id))
                 .map(Box::new)
                 .collect();
-            return Ok(MappedType::Tuple {
-                types: ty,
-                name: field_name,
-            });
+            return MappedType::Tuple(map(types, format!("TupleStruct{}", id)));
         }
-        ParamType::Array(a) => return map_ton_types(*a, field_name),
-        ParamType::FixedArray(a, _) => return map_ton_types(*a, field_name),
+        ParamType::Array(a) => return map_ton_types(*a, field_name, id),
+        ParamType::FixedArray(a, _) => return map_ton_types(*a, field_name, id),
         ParamType::Cell => "ton_types::Cell".to_string(),
         ParamType::Map(a, b) => {
-            let a = match map_ton_types(*a, field_name.clone()).unwrap() {
+            let a = match map_ton_types(*a, field_name.clone(), id) {
                 MappedType::Ty { ty, .. } => (ty),
-                MappedType::Tuple { .. } => {
-                    todo!()
+                MappedType::Tuple(..) => {
+                    unimplemented!("Tuple can't be key")
+                }
+                MappedType::HashMap { .. } => {
+                    unimplemented!("Map can't be key")
                 }
             };
-            let b = match map_ton_types(*b, field_name.clone()).unwrap() {
+            let b = match map_ton_types(*b, field_name.clone(), id) {
                 MappedType::Ty { ty, .. } => (ty),
-                MappedType::Tuple { .. } => {
-                    todo!()
+                MappedType::Tuple(d) => {
+                    *id += 1;
+                    let struct_name = format!("TupleStruct{}", id);
+                    let ty = format!("HashMap<{},{}>", a, struct_name);
+                    return MappedType::HashMap {
+                        ty,
+                        name: field_name,
+                        abi_type,
+                        tuple: d,
+                    };
+                }
+                MappedType::HashMap { .. } => {
+                    unimplemented!("Map can't be a value")
                 }
             };
             format!("HashMap<{},{}>", a, b)
@@ -509,10 +626,11 @@ fn map_ton_types(ty: ParamType, field_name: String) -> Result<MappedType> {
         ParamType::Expire => "u32".to_string(),
         ParamType::PublicKey => "ed25519_dalek::PublicKey".to_string(),
     };
-    Ok(MappedType::Ty {
+    MappedType::Ty {
         ty,
         name: field_name,
-    })
+        abi_type,
+    }
 }
 
 #[cfg(test)]

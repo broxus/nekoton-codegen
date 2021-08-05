@@ -214,8 +214,7 @@ dependencies = [
 [[package]]
 name = "codegen"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34c59e8a9b988977ec3bd61ab380cf1167048817ecd3d6999fac03657f85a609"
+source = "git+https://github.com/0xdeafbeef/codegen.git#936f20594c5522c28d2bbb153b0622a0d2ba28e8"
 dependencies = [
  "indexmap",
 ]
@@ -240,9 +239,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "639891fde0dbea823fc3d798a0fdf9d2f9440a42d64a78ab3488b0ca025117b3"
+checksum = "0b9fdf9972b2bd6af2d913799d9ebc165ea4d2e65878e329d9c6b372c4491b61"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -504,7 +503,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#e474b00508d32ca25c46a31b12500504b3f4825a"
+source = "git+https://github.com/broxus/nekoton.git#db85ad6842559d778e491a9fc6b3df81984227bc"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -518,7 +517,7 @@ dependencies = [
  "sha2 0.9.5",
  "thiserror",
  "ton_block 1.7.14",
- "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types.git)",
+ "ton_types 1.10.2",
 ]
 
 [[package]]
@@ -964,8 +963,8 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2 0.8.2",
- "ton_block 1.7.17",
- "ton_types 1.10.2 (git+https://github.com/tonlabs/ton-labs-types.git)",
+ "ton_block 1.7.18",
+ "ton_types 1.10.4",
 ]
 
 [[package]]
@@ -985,13 +984,13 @@ dependencies = [
  "num-traits",
  "rand 0.7.3",
  "sha2 0.8.2",
- "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types.git)",
+ "ton_types 1.10.2",
 ]
 
 [[package]]
 name = "ton_block"
-version = "1.7.17"
-source = "git+https://github.com/tonlabs/ton-labs-block.git#d3d91cce743e48c8bb4f92735f271778f7826ec1"
+version = "1.7.18"
+source = "git+https://github.com/tonlabs/ton-labs-block.git#d8cbe76ebe8bdadae955863015c5a4b7d3c545cc"
 dependencies = [
  "base64 0.10.1",
  "clear_on_drop",
@@ -1005,7 +1004,7 @@ dependencies = [
  "num-traits",
  "rand 0.7.3",
  "sha2 0.8.2",
- "ton_types 1.10.2 (git+https://github.com/tonlabs/ton-labs-types.git)",
+ "ton_types 1.10.4",
 ]
 
 [[package]]
@@ -1028,8 +1027,8 @@ dependencies = [
 
 [[package]]
 name = "ton_types"
-version = "1.10.2"
-source = "git+https://github.com/tonlabs/ton-labs-types.git#adaa5ff8b3264ab432bcd7bc3cd3095af7376600"
+version = "1.10.4"
+source = "git+https://github.com/tonlabs/ton-labs-types.git#87d0916f3151e480517f7cd84383ac5cb21ff3d6"
 dependencies = [
  "base64 0.11.0",
  "crc",
