@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use case::CaseExt;
 use clap::Clap;
 use codegen::{Field, Module, Scope, Struct};
-use itertools::{join, Itertools};
+use itertools::Itertools;
 use nekoton_utils::NoFailure;
 use tap::Pipe;
 use ton_abi::{Event, Function, Param, ParamType};
@@ -38,6 +38,24 @@ fn main() -> Result<()> {
         None => {}
         Some(a) => {
             std::fs::create_dir_all(a.join("abi"))?;
+            let mut imports = Module::new("")
+                .import("serde", "Serialize")
+                .import("serde", "Deserialize")
+                .import("nekoton_abi", "UnpackAbi")
+                .import("nekoton_abi", "UnpackAbiPlain")
+                .import("nekoton_abi", "PackAbi")
+                .import("nekoton_abi", "UnpackerError")
+                .import("nekoton_abi", "UnpackerResult")
+                .import("nekoton_abi", "BuildTokenValue")
+                .import("nekoton_abi", "TokenValueExt")
+                .import("ton_abi", "Param")
+                .import("ton_abi", "ParamType")
+                .import("std::collections", "HashMap")
+                .import("once_cell::sync", "OnceCell")
+                .clone();
+            let str = imports.scope().to_string();
+            let str = str.split('\n').map(|x| "pub ".to_string() + x).join("\n");
+            std::fs::write(a.join("prelude.rs"), str)?;
         }
     }
     for p in std::fs::read_dir(args.data_path)? {
@@ -67,26 +85,28 @@ fn main() -> Result<()> {
     }
 
     let mut models_ = Module::new("models");
-    println!("SSSS: FINAL");
     dedup(models)
         .into_iter()
         .sorted_by(|a, b| a.ty.cmp(&b.ty))
         .dedup_by(|a, b| a.ty.eq(&b.ty))
         .map(construct_struct)
         .for_each(|x| models_ = models_.push_struct(x).clone());
+    let mut models = module_imports(models_);
     match args.out_path {
         None => {
             for md in scopes {
                 println!("{}\n{}", md.0, md.1.to_string());
             }
-            println!("{}", models_.scope().to_string());
+            println!("{}", models.scope().to_string());
         }
         Some(a) => {
             let mut imports = vec![];
             std::fs::create_dir_all(&a)?;
             let models_path = a.join(Path::new("models.rs"));
             imports.push("models".to_string());
+            imports.push("prelude".to_string());
             for (name, mode) in scopes {
+                let name = name.to_snake();
                 imports.push(name.clone());
                 let file_path = PathBuf::from(name + ".rs").pipe(|x| a.join(x));
                 std::fs::write(&file_path, mode.to_string())?;
@@ -96,7 +116,7 @@ fn main() -> Result<()> {
                         .spawn()?;
                 }
             }
-            std::fs::write(&models_path, models_.scope().to_string())?;
+            std::fs::write(&models_path, models.scope().to_string())?;
             if args.fmt {
                 std::process::Command::new("rustfmt")
                     .args(&[models_path])
@@ -143,35 +163,12 @@ fn generate_contract_binding(
         *scope.new_module("events") = events.0;
         models_data.extend(events.1)
     }
-    models_data
-        .iter()
-        .filter(|x| x.ty.starts_with("Tuple"))
-        .for_each(|x| println!("const FIN: {}", x.ty));
     let models_data = dedup(models_data);
-    models_data
-        .iter()
-        .filter(|x| x.ty.starts_with("Tuple"))
-        .for_each(|x| println!("let FIN: {}", x.ty));
     Ok((scope, models_data))
 }
 
 fn module_imports(mut module: Module) -> Module {
-    module
-        .vis("pub")
-        .import("serde", "Serialize")
-        .import("serde", "Deserialize")
-        .import("nekoton_abi", "UnpackAbi")
-        .import("nekoton_abi", "UnpackAbiPlain")
-        .import("nekoton_abi", "PackAbi")
-        .import("nekoton_abi", "UnpackerError")
-        .import("nekoton_abi", "UnpackerResult")
-        .import("nekoton_abi", "BuildTokenValue")
-        .import("nekoton_abi", "TokenValueExt")
-        .import("ton_abi", "Param")
-        .import("ton_abi", "ParamType")
-        .import("std::collections", "HashMap")
-        .import("once_cell::sync", "OnceCell")
-        .clone()
+    module.vis("pub").import("super::prelude", "*").clone()
 }
 
 fn events_gen(
@@ -250,9 +247,11 @@ fn params_to_string(params: Vec<Param>) -> String {
 }
 
 fn function_impl(function: Function) -> codegen::Function {
+    let headers = params_to_string(function.header);
     let mut fun = codegen::Function::new(&function.name.to_snake())
         .vis("pub")
         .ret("&'static ton_abi::Function")
+        .line(format!("let header = {}", headers))
         .line("static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();")
         .line("FUNCTION.get_or_init(|| {")
         .clone();
@@ -278,7 +277,10 @@ fn function_impl(function: Function) -> codegen::Function {
         fun = fun.line(res).clone();
         fun = fun.line("builder = builder.outputs(output);").clone();
     }
-    fun.line("builder.build()").line("})").clone()
+    fun.line("builder.headers(header)")
+        .line(".build()")
+        .line("})")
+        .clone()
 }
 
 fn event_impl(event: Event) -> codegen::Function {
@@ -363,10 +365,6 @@ fn dedup(structs: Vec<StructData>) -> Vec<StructData> {
             normal_structs.push(str.clone());
             continue;
         }
-        println!("ALL: {}, {}", name, str.fields.len());
-        for field in &str.fields {
-            println!("{} {}", str.ty, field.name);
-        }
         let new_str = types_to_struct_map
             .entry(str.fields.clone())
             .or_insert_with(|| str.clone());
@@ -382,14 +380,11 @@ fn dedup(structs: Vec<StructData>) -> Vec<StructData> {
                 }
             });
     }
-    println!("Deduping");
     tuple_structs
         .values()
         .into_iter()
-        .inspect(|x| println!("DUPPED: {}", x.ty))
         .sorted_by(|a, b| a.ty.cmp(&b.ty))
         .dedup_by(|a, b| a.ty.eq(&b.ty))
-        .inspect(|x| println!("DEDUPPED :{}", x.ty))
         .for_each(|x| {
             output.push(x.clone());
         });
