@@ -32,6 +32,7 @@ struct Args {
 fn main() -> Result<()> {
     let args: Args = Args::try_parse()?;
     let mut models = Vec::new();
+    let mut impls = Vec::new();
     let mut scopes = BTreeMap::new();
     let mut struct_id = 0;
     match &args.out_path {
@@ -54,7 +55,11 @@ fn main() -> Result<()> {
                 .import("once_cell::sync", "OnceCell")
                 .clone();
             let str = imports.scope().to_string();
-            let str = str.split('\n').map(|x| "pub ".to_string() + x).join("\n");
+            let str = str
+                .split('\n')
+                .filter(|x| !x.is_empty())
+                .map(|x| "pub ".to_string() + x)
+                .join("\n");
             std::fs::write(a.join("prelude.rs"), str)?;
         }
     }
@@ -81,6 +86,7 @@ fn main() -> Result<()> {
         let abi = std::fs::read_to_string(&p.path())?;
         let result = generate_contract_binding(abi, &contract_name, &mut struct_id)?;
         models.extend(result.1);
+        impls.extend(result.2);
         scopes.insert(contract_name, result.0);
     }
 
@@ -91,6 +97,14 @@ fn main() -> Result<()> {
         .dedup_by(|a, b| a.ty.eq(&b.ty))
         .map(construct_struct)
         .for_each(|x| models_ = models_.push_struct(x).clone());
+    impls.into_iter().for_each(|x| match x {
+        (Some(a), Some(b)) => {
+            models_ = models_.push_impl(a).push_impl(b).clone();
+        }
+        (Some(a), _) => models_ = models_.push_impl(a).clone(),
+        (_, Some(a)) => models_ = models_.push_impl(a).clone(),
+        _ => {}
+    });
     let mut models = module_imports(models_);
     match args.out_path {
         None => {
@@ -137,20 +151,22 @@ fn generate_contract_binding(
     abi: String,
     contract_name: &str,
     struct_id: &mut usize,
-) -> Result<(Scope, Vec<StructData>)> {
+) -> Result<(Scope, Vec<StructData>, ImplData)> {
     let data = ton_abi::Contract::load(std::io::Cursor::new(abi))
         .convert()
         .context("Failed parsing json as contract")?;
     let mut scope = codegen::Scope::new();
     let mut models_data = vec![];
+    let mut impl_data = vec![];
     let functions = data.functions();
     if !functions.is_empty() {
         let functions = functions_gen(
             BTreeMap::from_iter(functions.clone()),
-            &contract_name,
+            contract_name,
             struct_id,
         )?;
         *scope.new_module("functions") = functions.0;
+        impl_data.extend(functions.2);
         models_data.extend(functions.1)
     }
     let events = data.events();
@@ -161,32 +177,38 @@ fn generate_contract_binding(
             struct_id,
         )?;
         *scope.new_module("events") = events.0;
-        models_data.extend(events.1)
+        models_data.extend(events.1);
+        impl_data.extend(events.2);
     }
     let models_data = dedup(models_data);
-    Ok((scope, models_data))
+    Ok((scope, models_data, impl_data))
 }
 
 fn module_imports(mut module: Module) -> Module {
     module.vis("pub").import("super::prelude", "*").clone()
 }
 
+type ImplData = Vec<(Option<codegen::Impl>, Option<codegen::Impl>)>;
+
 fn events_gen(
     input: BTreeMap<String, Event>,
     contract_name: &str,
     struct_id: &mut usize,
-) -> Result<(Module, Vec<StructData>)> {
+) -> Result<(Module, Vec<StructData>, ImplData)> {
     let mut md = Module::new("events");
     let mut structs = vec![];
     let mut events = vec![];
+    let mut impls = vec![];
     for (name, event) in input {
         if event.inputs.is_empty() {
             continue;
         }
-        for strct in gen_struct(&event.inputs, name.clone() + "Input", struct_id) {
+        for strct in gen_struct(&event.inputs, name.clone() + "Event", struct_id) {
             structs.push(strct);
         }
-        events.push(event_impl(event));
+        let impl_data = event_impl(event);
+        impls.push(impl_data.builder_impl);
+        events.push(impl_data.struct_impl);
     }
     struct_impl(contract_name, events, &mut md);
     let structs = dedup(structs);
@@ -195,6 +217,7 @@ fn events_gen(
             .import("nekoton_abi", "EventBuilder")
             .clone(),
         structs,
+        impls,
     ))
 }
 
@@ -246,14 +269,32 @@ fn params_to_string(params: Vec<Param>) -> String {
     res
 }
 
-fn function_impl(function: Function) -> codegen::Function {
+struct FunctionImpl {
+    struct_impl: codegen::Function,
+    builder_impl: (Option<codegen::Impl>, Option<codegen::Impl>), //Input output
+}
+
+fn impl_gen(tokens: &str, name: &str) -> codegen::Impl {
+    let mut imp = codegen::Impl::new(name);
+    let fun = codegen::Function::new("make_params_tuple")
+        .vis("pub")
+        .ret("ton_abi::ParamType")
+        .line("use std::iter::FromIterator;")
+        .line(format!("let tokens  = {}", tokens))
+        .line("TupleBuilder::from_iter(tokens).build()")
+        .clone();
+    imp.push_fn(fun);
+    imp
+}
+
+fn function_impl(function: Function) -> FunctionImpl {
     let headers = params_to_string(function.header);
     let mut fun = codegen::Function::new(&function.name.to_snake())
         .vis("pub")
         .ret("&'static ton_abi::Function")
-        .line(format!("let header = {}", headers))
         .line("static FUNCTION: OnceCell<ton_abi::Function> = OnceCell::new();")
         .line("FUNCTION.get_or_init(|| {")
+        .line(format!("let header = {}", headers))
         .clone();
 
     if !(function.inputs.is_empty() && function.outputs.is_empty()) {
@@ -264,34 +305,52 @@ fn function_impl(function: Function) -> codegen::Function {
             ))
             .clone();
     }
-    if !function.inputs.is_empty() {
+    let input = if !function.inputs.is_empty() {
         let mut res = "let input = ".to_string();
-        res += &params_to_string(function.inputs);
+        let input = params_to_string(function.inputs);
+        res += &input;
         fun = fun.line(res).clone();
         fun = fun.line("builder = builder.inputs(input);").clone();
-    }
 
-    if !function.outputs.is_empty() {
+        let name = format!("{}Input", function.name)
+            .replace(|x| !char::is_alphanumeric(x), "_")
+            .to_camel();
+        Some(impl_gen(&input, &name))
+    } else {
+        None
+    };
+    let output = if !function.outputs.is_empty() {
         let mut res = "let output = ".to_string();
-        res += &params_to_string(function.outputs);
+        let output = params_to_string(function.outputs);
+        res += &output;
         fun = fun.line(res).clone();
         fun = fun.line("builder = builder.outputs(output);").clone();
-    }
-    fun.line("builder.headers(header)")
+        let name = format!("{}Output", function.name)
+            .replace(|x| !char::is_alphanumeric(x), "_")
+            .to_camel();
+        Some(impl_gen(&output, &name))
+    } else {
+        None
+    };
+    let struct_impl = fun
+        .line("builder.headers(header)")
         .line(".build()")
         .line("})")
-        .clone()
+        .clone();
+    FunctionImpl {
+        struct_impl,
+        builder_impl: (input, output),
+    }
 }
 
-fn event_impl(event: Event) -> codegen::Function {
+fn event_impl(event: Event) -> FunctionImpl {
     let mut fun = codegen::Function::new(&event.name.to_snake())
         .vis("pub")
         .ret("&'static ton_abi::Event")
         .line("static EVENT: OnceCell<ton_abi::Event> = OnceCell::new();")
         .line("EVENT.get_or_init(|| {")
         .clone();
-
-    if !(event.inputs.is_empty()) {
+    let input = if !(event.inputs.is_empty()) {
         fun = fun
             .line(format!(
                 "let mut builder = EventBuilder::new(\"{}\");",
@@ -299,26 +358,40 @@ fn event_impl(event: Event) -> codegen::Function {
             ))
             .clone();
         let mut res = "let input = ".to_string();
-        res += &params_to_string(event.inputs);
+        let input = params_to_string(event.inputs);
+        res += &input;
         fun = fun.line(res).clone();
         fun = fun.line("builder = builder.inputs(input);").clone();
+        let name = format!("{}Event", event.name)
+            .replace(|x| !char::is_alphanumeric(x), "_")
+            .to_camel();
+        Some(impl_gen(&input, &name))
+    } else {
+        None
+    };
+    let fun = fun.line("builder.build()").line("})").clone();
+    FunctionImpl {
+        struct_impl: fun,
+        builder_impl: (input, None),
     }
-    fun.line("builder.build()").line("})").clone()
 }
 
 fn functions_gen(
     input: BTreeMap<String, Function>,
     contract_name: &str,
     struct_id: &mut usize,
-) -> Result<(Module, Vec<StructData>)> {
+) -> Result<(Module, Vec<StructData>, ImplData)> {
     let mut md = Module::new("functions");
     let mut structs = vec![];
     let mut funs = vec![];
+    let mut impls = vec![];
     for (name, fun) in input {
         if fun.inputs.is_empty() && fun.outputs.is_empty() {
             continue;
         }
-        funs.push(function_impl(fun.clone()));
+        let impl_data = function_impl(fun.clone());
+        funs.push(impl_data.struct_impl);
+        impls.push(impl_data.builder_impl);
         for strct in gen_struct(&fun.inputs, name.clone() + "Input", struct_id) {
             structs.push(strct);
         }
@@ -334,6 +407,7 @@ fn functions_gen(
             .import("nekoton_abi", "FunctionBuilder")
             .clone(),
         structs,
+        impls,
     ))
 }
 
@@ -390,7 +464,7 @@ fn dedup(structs: Vec<StructData>) -> Vec<StructData> {
         });
 
     normal_structs.into_iter().for_each(|x| {
-        output.push(x.clone());
+        output.push(x);
     });
     output
 }
@@ -401,14 +475,13 @@ fn construct_struct(data: StructData) -> Struct {
     for field in data.fields {
         let FieldData { name, ty, .. } = field;
         let field_name = name
-            .strip_prefix("_")
+            .strip_prefix('_')
             .unwrap_or_else(|| name.as_str())
             .pipe(process_field)
             .to_snake();
-
-        let field = "pub ".to_string() + &field_name;
         let named_abi = format!("#[abi(name = \"{}\")]", name);
 
+        let field = "pub ".to_string() + &field_name;
         let mut annotations = Vec::new();
 
         if field_name != name {
@@ -492,9 +565,9 @@ fn gen_struct(types: &[Param], name: String, struct_id: &mut usize) -> Vec<Struc
                 res.extend(a.clone());
                 let mapped_struct = a.last().unwrap();
                 struct_types.push(FieldData {
-                    name: name.clone(),
+                    name: param.name.clone(),
                     ty: mapped_struct.ty.clone(),
-                    abi_type: "".to_string(),
+                    abi_type: param.kind.to_string(),
                 });
             }
             MappedType::HashMap {
@@ -625,18 +698,5 @@ fn map_ton_types(ty: ParamType, field_name: String, id: &mut usize) -> MappedTyp
         ty,
         name: field_name,
         abi_type,
-    }
-}
-
-#[cfg(test)]
-mod test {
-    // use pretty_assertions::assert_eq;
-    #[test]
-    fn test_abi() {
-        let abi = include_str!("../test/SafeMultisigWallet.abi.json");
-        let mut fh = std::io::Cursor::new(abi);
-        let res = super::generate_contract_binding(&mut fh, "SafeMultisigWalletAbi").unwrap();
-        let expected = include_str!("../test/test.txt");
-        assert_eq!(res, expected);
     }
 }
