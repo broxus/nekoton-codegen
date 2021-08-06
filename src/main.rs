@@ -188,6 +188,7 @@ fn module_imports(mut module: Module) -> Module {
     module
         .vis("pub")
         .import("super::super::prelude", "*")
+        .import("nekoton_abi;", "TupleBuilder")
         .clone()
 }
 
