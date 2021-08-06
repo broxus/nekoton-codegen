@@ -447,15 +447,27 @@ fn dedup(structs: Vec<StructData>) -> Vec<StructData> {
             .or_insert_with(|| str.clone());
         tuple_structs.insert(name, new_str.clone());
     }
-    for str in &mut normal_structs {
-        str.fields
-            .iter_mut()
-            .for_each(|x| match tuple_structs.get(&x.ty) {
-                None => (),
-                Some(str) => {
-                    x.ty = str.ty.clone();
+    for str in normal_structs.iter_mut() {
+        for field in str.fields.iter_mut() {
+            if field.ty.contains("HashMap") {
+                let map_tys: Vec<_> = field.ty.split(',').collect();
+                let value = map_tys[1].strip_suffix('>').unwrap();
+                match tuple_structs.get(value) {
+                    None => {}
+                    Some(a) => {
+                        let new_type = format!("{},{}>", map_tys[0], a.ty);
+                        field.ty = new_type;
+                    }
                 }
-            });
+                continue;
+            }
+            match tuple_structs.get(&field.ty) {
+                None => {}
+                Some(str) => {
+                    field.ty = str.ty.clone();
+                }
+            }
+        }
     }
     tuple_structs
         .values()
@@ -673,8 +685,7 @@ fn map_ton_types(ty: ParamType, field_name: String, id: &mut usize) -> MappedTyp
             let b = match map_ton_types(*b, field_name.clone(), id) {
                 MappedType::Ty { ty, .. } => (ty),
                 MappedType::Tuple(d) => {
-                    *id += 1;
-                    let struct_name = format!("TupleStruct{}", id);
+                    let struct_name = d.first().unwrap().ty.clone();
                     let ty = format!("HashMap<{},{}>", a, struct_name);
                     return MappedType::HashMap {
                         ty,
@@ -701,5 +712,21 @@ fn map_ton_types(ty: ParamType, field_name: String, id: &mut usize) -> MappedTyp
         ty,
         name: field_name,
         abi_type,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeMap;
+    use std::fs::File;
+    use std::iter::FromIterator;
+
+    #[test]
+    fn test() {
+        let abi = File::open("test/EthereumEventConfiguration.abi.json").unwrap();
+        let abi = ton_abi::Contract::load(abi).unwrap();
+        let res = super::functions_gen(BTreeMap::from_iter(abi.functions().clone()), "wd", &mut 1)
+            .unwrap();
+        dbg!(res.1);
     }
 }
